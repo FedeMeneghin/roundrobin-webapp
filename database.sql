@@ -146,3 +146,8 @@ alter table voting_sessions disable row level security;
 alter table voting_candidates disable row level security;
 alter table voting_votes disable row level security;
 alter table events disable row level security;
+
+-- ============================================
+-- aggiungo password
+-- ============================================
+alter table members add column password_hash text;

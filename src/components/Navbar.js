@@ -4,9 +4,11 @@ const palette = {
   bg: '#faf8f4',
   card: '#ffffff',
   accent: '#7a9e7e',
+  accentLight: '#e8f0e9',
   text: '#2c2c2c',
   muted: '#888',
   border: '#e8e4de',
+  beige: '#f2ece2',
 };
 
 const tabs = [
@@ -19,7 +21,7 @@ const tabs = [
   { id: 'calendar', label: '📅 Calendario' },
 ];
 
-export default function Navbar({ activeTab, setActiveTab, isCapitano, setIsCapitano }) {
+export default function Navbar({ activeTab, setActiveTab, isCapitano, currentMember, onLogout }) {
   return (
     <div style={{ background: palette.card, borderBottom: `1px solid ${palette.border}`, padding: '1rem 2rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.8rem' }}>
@@ -29,33 +31,25 @@ export default function Navbar({ activeTab, setActiveTab, isCapitano, setIsCapit
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
           {isCapitano && (
             <span style={{ background: palette.accent, color: '#fff', borderRadius: '20px', padding: '0.2rem 0.8rem', fontSize: '0.8rem' }}>
-              ⚓ Modalità Capitano
+              ⚓ Capitano
+            </span>
+          )}
+          {currentMember && (
+            <span style={{ color: palette.muted, fontSize: '0.85rem' }}>
+              🏴‍☠️ {currentMember.name}
             </span>
           )}
           <button
-            onClick={() => setIsCapitano(!isCapitano)}
-            style={{ background: 'transparent', border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.3rem 0.8rem', cursor: 'pointer', fontSize: '0.8rem', color: palette.muted }}
-          >
-            {isCapitano ? 'Esci' : '🔐 Capitano'}
+            onClick={onLogout}
+            style={{ background: 'transparent', border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.3rem 0.8rem', cursor: 'pointer', fontSize: '0.8rem', color: palette.muted }}>
+            Esci
           </button>
         </div>
       </div>
       <nav style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            style={{
-              background: activeTab === t.id ? palette.accent : 'transparent',
-              color: activeTab === t.id ? '#fff' : palette.muted,
-              border: `1px solid ${activeTab === t.id ? palette.accent : palette.border}`,
-              borderRadius: '20px',
-              padding: '0.3rem 0.9rem',
-              cursor: 'pointer',
-              fontSize: '0.85rem',
-              fontFamily: 'Georgia, serif',
-            }}
-          >
+          <button key={t.id} onClick={() => setActiveTab(t.id)}
+            style={{ background: activeTab === t.id ? palette.accent : 'transparent', color: activeTab === t.id ? '#fff' : palette.muted, border: `1px solid ${activeTab === t.id ? palette.accent : palette.border}`, borderRadius: '20px', padding: '0.3rem 0.9rem', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
             {t.label}
           </button>
         ))}
