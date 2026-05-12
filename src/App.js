@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Members from './components/Members';
 import Library from './components/Library';
 import Proposals from './components/Proposals';
+import Home from './components/Home';
 
 const palette = {
   bg: '#faf8f4',
@@ -56,12 +57,13 @@ export default function App() {
         return <Proposals isCapitano={isCapitano} currentMember={isCapitano ? null : currentMember} source="user" />;
       case 'members':
         return <Members isCapitano={isCapitano} />;
+      case 'home':
+        return <Home currentMember={currentMember} isCapitano={isCapitano} />;
       default:
         return (
-          <div style={{ background: palette.card, border: `1px solid ${palette.border}`, borderRadius: '12px', padding: '2rem', textAlign: 'center', color: palette.muted, fontFamily: 'Georgia, serif' }}>
+          <div style={{ background: '#fff', border: '1px solid #e8e4de', borderRadius: '12px', padding: '2rem', textAlign: 'center', color: '#888', fontFamily: 'Georgia, serif' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏴‍☠️</div>
-            <div style={{ fontSize: '1.2rem' }}>Sezione in costruzione...</div>
-            <div style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>Benvenuto a bordo, <strong>{currentMember.name}</strong>!</div>
+            <div>Sezione in costruzione...</div>
           </div>
         );
     }
