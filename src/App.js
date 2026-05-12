@@ -1,23 +1,25 @@
-import logo from './logo.svg';
-import './App.css';
+import { useEffect, useState } from 'react';
+import { supabase } from './supabase';
 
 function App() {
+  const [status, setStatus] = useState('Connessione in corso...');
+
+  useEffect(() => {
+    async function testConnection() {
+      const { data, error } = await supabase.from('members').select('*');
+      if (error) {
+        setStatus('❌ Errore: ' + error.message);
+      } else {
+        setStatus('✅ Connessione a Supabase riuscita! Membri nel db: ' + data.length);
+      }
+    }
+    testConnection();
+  }, []);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
+      <h1>Book Club — Test Supabase</h1>
+      <p>{status}</p>
     </div>
   );
 }
