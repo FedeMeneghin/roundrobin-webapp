@@ -26,7 +26,7 @@ export default function Members({ isCapitano }) {
   }
 
   async function removeMember(id) {
-    if (!window.confirm('Rimuovere questo pirata?')) return;
+    if (!window.confirm('Rimuovere questo partecipante?')) return;
     const { error } = await supabase.from('members').delete().eq('id', id);
     if (error) setError(error.message);
     else fetchMembers();
@@ -60,7 +60,7 @@ export default function Members({ isCapitano }) {
         ) : members.length === 0 ? (
           <div style={{ textAlign: 'center', padding: `${space[8]} 0`, color: color.muted, fontFamily: font.body }}>
             <div style={{ fontSize: '2.5rem', marginBottom: space[3] }}>🏴‍☠️</div>
-            <div style={{ fontSize: text.md }}>Nessun pirata ancora. Aggiungine uno!</div>
+            <div style={{ fontSize: text.md }}>Nessun partecipante ancora. Aggiungine uno!</div>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: space[3] }}>
@@ -106,11 +106,11 @@ export default function Members({ isCapitano }) {
         {/* Aggiungi membro — solo Capitano */}
         {isCapitano && (
           <div style={{ marginTop: space[6], borderTop: `1px solid ${color.border}`, paddingTop: space[5] }}>
-            <div style={{ ...heading.md, marginBottom: space[3] }}>Aggiungi pirata</div>
+            <div style={{ ...heading.md, marginBottom: space[3] }}>Aggiungi partecipante</div>
             <div style={{ display: 'flex', gap: space[3] }}>
               <input
                 style={{ ...inputStyle, flex: 1 }}
-                placeholder="Nome del nuovo pirata"
+                placeholder="Nome del nuovo partecipante"
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addMember()}

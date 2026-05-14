@@ -37,3 +37,5 @@ alter table event_rsvp disable row level security;
 
 alter table books add column isbn text;
 alter table books add column cover_url text;
+
+ALTER TABLE books ADD COLUMN IF NOT EXISTS cover_url text;

@@ -22,7 +22,7 @@ export default function App() {
         setIsCapitano(true);
         setCurrentMember({ name: 'Capitano' });
       } else {
-        window.alert('❌ Password errata, pirata!');
+        window.alert('❌ Password errata!');
       }
     } else {
       setCurrentMember(member);

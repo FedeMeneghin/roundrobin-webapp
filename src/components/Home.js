@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
-import { color, font, text, space, radius, shadow, heading, badge } from '../theme';
+import { color, font, text, space, radius, shadow, heading, badge, btn} from '../theme';
 
 const EVENT_TYPE = {
   ufficiale: { label: '⚓ Ufficiale', bg: color.primarySoft,  fg: color.primaryDark },
@@ -20,9 +20,10 @@ function Skeleton({ w = '100%', h = '1rem', br = radius.sm }) {
 
 export default function Home({ currentMember, isCapitano }) {
   const [currentBook,     setCurrentBook]     = useState(null);
-  const [upcomingEvents,  setUpcomingEvents]   = useState([]);
-  const [stats,           setStats]            = useState({ books: 0, members: 0, proposals: 0 });
-  const [loading,         setLoading]          = useState(true);
+  const [upcomingEvents,  setUpcomingEvents]  = useState([]);
+  const [stats,           setStats]           = useState({ books: 0, members: 0, proposals: 0 });
+  const [loading,         setLoading]         = useState(true);
+  const [settingActive,   setSettingActive]   = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchAll(); }, []);
@@ -54,6 +55,19 @@ export default function Home({ currentMember, isCapitano }) {
       supabase.from('proposals').select('*', { count: 'exact', head: true }),
     ]);
     setStats({ books: books || 0, members: members || 0, proposals: proposals || 0 });
+  }
+
+  async function setBookOfMonth(bookId) {
+    setSettingActive(true);
+    // Rimetti tutti gli 'active' in 'backlog' prima
+    await supabase.from('books').update({ status: 'backlog', selected_date: null }).eq('status', 'active');
+    // Imposta il nuovo libro del mese
+    await supabase.from('books').update({
+      status: 'active',
+      selected_date: new Date().toISOString().slice(0, 10),
+    }).eq('id', bookId);
+    setSettingActive(false);
+    fetchAll();
   }
 
   return (
@@ -136,6 +150,18 @@ export default function Home({ currentMember, isCapitano }) {
             <div style={{ color: color.muted, fontStyle: 'italic', fontFamily: font.body, fontSize: text.md }}>
               Nessun libro attivo al momento.
               {isCapitano && ' Apri una votazione per sceglierne uno!'}
+              {isCapitano && currentBook && (
+                <button
+                  onClick={async () => {
+                    if (!window.confirm('Segnare questo libro come completato?')) return;
+                    await supabase.from('books').update({ status: 'completed' }).eq('id', currentBook.id);
+                    fetchAll();
+                  }}
+                style={{ ...btn.secondary, fontSize: text.xs, marginTop: space[2] }}
+                >
+                ✅ Segna come completato
+                </button>
+            )}
             </div>
           )}
         </div>
