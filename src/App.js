@@ -5,14 +5,8 @@ import Members from './components/Members';
 import Library from './components/Library';
 import Proposals from './components/Proposals';
 import Home from './components/Home';
-
-const palette = {
-  bg: '#faf8f4',
-  card: '#ffffff',
-  accent: '#7a9e7e',
-  muted: '#888',
-  border: '#e8e4de',
-};
+import Calendar from './components/Calendar';
+import { t } from './theme';
 
 const CAPITANO_PASSWORD = 'kraken123';
 
@@ -49,6 +43,10 @@ export default function App() {
 
   function renderTab() {
     switch (activeTab) {
+      case 'home':
+        return <Home currentMember={currentMember} isCapitano={isCapitano} />;
+      case 'calendar':
+        return <Calendar isCapitano={isCapitano} currentMember={isCapitano ? null : currentMember} />;
       case 'library':
         return <Library isCapitano={isCapitano} currentMember={isCapitano ? null : currentMember} />;
       case 'libsugg':
@@ -57,20 +55,18 @@ export default function App() {
         return <Proposals isCapitano={isCapitano} currentMember={isCapitano ? null : currentMember} source="user" />;
       case 'members':
         return <Members isCapitano={isCapitano} />;
-      case 'home':
-        return <Home currentMember={currentMember} isCapitano={isCapitano} />;
       default:
         return (
-          <div style={{ background: '#fff', border: '1px solid #e8e4de', borderRadius: '12px', padding: '2rem', textAlign: 'center', color: '#888', fontFamily: 'Georgia, serif' }}>
+          <div style={{ background: t.card, borderRadius: t.radius, padding: '2rem', textAlign: 'center', color: t.muted, fontFamily: t.fontSerif, boxShadow: t.shadow }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏴‍☠️</div>
             <div>Sezione in costruzione...</div>
           </div>
-        );
+      );
     }
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: palette.bg }}>
+    <div style={{ minHeight: '100vh', background: t.bgSoft }}>
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}

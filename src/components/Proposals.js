@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabase';
 
 const palette = {
@@ -14,26 +14,71 @@ const palette = {
 const GENRES = ['Romanzo', 'Saggio', 'Racconto', 'Poesia', 'Graphic novel', 'Altro'];
 const GENDERS = ['M', 'F', 'Non binario', 'Sconosciuto'];
 
-export default function Proposals({ isCapitano, currentMember, source }) {
-  // source: 'library' | 'user'
-  const isLibrary = source === 'library';
+// Cerca su Open Library per titolo o ISBN
+async function searchOpenLibrary(query) {
+  const isISBN = /^[\d-]{9,}$/.test(query.trim());
+  let url;
+  if (isISBN) {
+    const isbn = query.replace(/-/g, '');
+    url = `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`;
+  } else {
+    url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=6&fields=title,author_name,publisher,first_publish_year,isbn,cover_i,key`;
+  }
+  const res = await fetch(url);
+  const data = await res.json();
 
+  if (isISBN) {
+    const key = `ISBN:${query.replace(/-/g, '')}`;
+    const book = data[key];
+    if (!book) return [];
+    return [{
+      title: book.title,
+      author: book.authors?.[0]?.name || '',
+      publisher: book.publishers?.[0]?.name || '',
+      year: book.publish_date ? parseInt(book.publish_date) : null,
+      isbn: query.replace(/-/g, ''),
+      cover_url: book.cover?.large || book.cover?.medium || null,
+    }];
+  } else {
+    return (data.docs || []).map(d => ({
+      title: d.title,
+      author: d.author_name?.[0] || '',
+      publisher: d.publisher?.[0] || '',
+      year: d.first_publish_year || null,
+      isbn: d.isbn?.[0] || null,
+      cover_url: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
+    }));
+  }
+}
+
+export default function Proposals({ isCapitano, currentMember, source }) {
+  const isLibrary = source === 'library';
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [authorSuggestions, setAuthorSuggestions] = useState([]);
-  const [authorLocked, setAuthorLocked] = useState(false);
 
+  // Ricerca ISBN/titolo
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [bookSelected, setBookSelected] = useState(false);
+  const searchTimeout = useRef(null);
+
+  // Form
   const emptyForm = {
-    title: '', publisher: '', publication_year: '', genre: 'Romanzo',
+    title: '', publisher: '', publication_year: '', genre: 'Romanzo', isbn: '', cover_url: '',
     author_name: '', author_gender: 'Sconosciuto', author_nationality: '', author_id: null,
   };
   const [form, setForm] = useState(emptyForm);
+  const [authorSuggestions, setAuthorSuggestions] = useState([]);
+  const [authorLocked, setAuthorLocked] = useState(false);
   const f = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
+  useEffect(() => {
+    fetchProposals();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchProposals(); }, [source]);
+  }, [source]);
 
   async function fetchProposals() {
     setLoading(true);
@@ -45,6 +90,45 @@ export default function Proposals({ isCapitano, currentMember, source }) {
     if (error) setError(error.message);
     else setProposals(data);
     setLoading(false);
+  }
+
+  // Ricerca con debounce
+  function handleSearchChange(val) {
+    setSearchQuery(val);
+    setBookSelected(false);
+    clearTimeout(searchTimeout.current);
+    if (val.length < 3) { setSearchResults([]); return; }
+    searchTimeout.current = setTimeout(async () => {
+      setSearching(true);
+      const results = await searchOpenLibrary(val);
+      setSearchResults(results);
+      setSearching(false);
+    }, 600);
+  }
+
+  function selectFromSearch(book) {
+    setForm(prev => ({
+      ...prev,
+      title: book.title,
+      publisher: book.publisher || '',
+      publication_year: book.year || '',
+      isbn: book.isbn || '',
+      cover_url: book.cover_url || '',
+      author_name: book.author,
+      author_id: null,
+    }));
+    setSearchResults([]);
+    setSearchQuery(book.title);
+    setBookSelected(true);
+    setAuthorLocked(false);
+  }
+
+  function resetForm() {
+    setForm(emptyForm);
+    setSearchQuery('');
+    setSearchResults([]);
+    setBookSelected(false);
+    setAuthorLocked(false);
   }
 
   async function searchAuthors(query) {
@@ -66,9 +150,8 @@ export default function Proposals({ isCapitano, currentMember, source }) {
 
   async function addProposal() {
     if (!form.title || !form.author_name) return;
-    if (!isLibrary && !currentMember) return alert('Seleziona prima il tuo nome nella sezione Pirati!');
+    if (!isLibrary && !currentMember) return alert('Seleziona prima il tuo nome!');
 
-    // 1. Crea autore se non esiste
     let authorId = form.author_id || null;
     if (!authorId) {
       const { data: newAuthor, error: authorError } = await supabase
@@ -79,14 +162,21 @@ export default function Proposals({ isCapitano, currentMember, source }) {
       authorId = newAuthor.id;
     }
 
-    // 2. Crea libro nel backlog
     const { data: newBook, error: bookError } = await supabase
       .from('books')
-      .insert({ title: form.title.trim(), author_id: authorId, genre: form.genre, publisher: form.publisher || null, publication_year: form.publication_year ? parseInt(form.publication_year) : null, status: 'backlog' })
+      .insert({
+        title: form.title.trim(),
+        author_id: authorId,
+        genre: form.genre,
+        publisher: form.publisher || null,
+        publication_year: form.publication_year ? parseInt(form.publication_year) : null,
+        isbn: form.isbn || null,
+        cover_url: form.cover_url || null,
+        status: 'backlog',
+      })
       .select('id').single();
     if (bookError) { setError(bookError.message); return; }
 
-    // 3. Crea proposta
     const { error: proposalError } = await supabase.from('proposals').insert({
       book_id: newBook.id,
       proposed_by: isLibrary ? null : currentMember.id,
@@ -94,8 +184,7 @@ export default function Proposals({ isCapitano, currentMember, source }) {
     });
     if (proposalError) { setError(proposalError.message); return; }
 
-    setForm(emptyForm);
-    setAuthorLocked(false);
+    resetForm();
     setShowAdd(false);
     fetchProposals();
   }
@@ -107,10 +196,9 @@ export default function Proposals({ isCapitano, currentMember, source }) {
     fetchProposals();
   }
 
-  if (loading) return <p style={{ padding: '2rem', color: palette.muted }}>Caricamento proposte...</p>;
-
-  // Chi può aggiungere proposte
   const canAdd = isLibrary ? isCapitano : !!currentMember;
+
+  if (loading) return <p style={{ padding: '2rem', color: palette.muted }}>Caricamento proposte...</p>;
 
   return (
     <div>
@@ -120,16 +208,12 @@ export default function Proposals({ isCapitano, currentMember, source }) {
           {proposals.length} {proposals.length === 1 ? 'proposta' : 'proposte'}
         </div>
         {canAdd && (
-          <button onClick={() => setShowAdd(!showAdd)} style={{ background: palette.accent, color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1.1rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+          <button onClick={() => { setShowAdd(!showAdd); resetForm(); }} style={{ background: palette.accent, color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1.1rem', cursor: 'pointer', fontSize: '0.85rem' }}>
             {showAdd ? 'Annulla' : '+ Proponi libro'}
           </button>
         )}
-        {!canAdd && !isLibrary && (
-          <span style={{ color: palette.muted, fontSize: '0.85rem' }}>Seleziona il tuo nome in Pirati per proporre un libro</span>
-        )}
-        {!canAdd && isLibrary && (
-          <span style={{ color: palette.muted, fontSize: '0.85rem' }}>Solo il Capitano può aggiungere proposte della libreria</span>
-        )}
+        {!canAdd && !isLibrary && <span style={{ color: palette.muted, fontSize: '0.85rem' }}>Accedi per proporre un libro</span>}
+        {!canAdd && isLibrary && <span style={{ color: palette.muted, fontSize: '0.85rem' }}>Solo il Capitano può aggiungere proposte della libreria</span>}
       </div>
 
       {error && <p style={{ color: 'red', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</p>}
@@ -137,7 +221,62 @@ export default function Proposals({ isCapitano, currentMember, source }) {
       {/* Form */}
       {showAdd && (
         <div style={{ background: palette.beige, border: `1px solid ${palette.border}`, borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ fontWeight: 'bold', color: palette.accent, marginBottom: '1rem', fontFamily: 'Georgia, serif' }}>📖 Nuovo libro</div>
+          <div style={{ fontWeight: 'bold', color: palette.accent, marginBottom: '0.3rem', fontFamily: 'Georgia, serif' }}>📖 Proponi un libro</div>
+          <div style={{ fontSize: '0.8rem', color: palette.muted, marginBottom: '1rem' }}>
+            {isCapitano ? '⚓ Andrà nelle proposte della libreria.' : '🏴‍☠️ Andrà nelle proposte dei pirati.'}
+          </div>
+
+          {/* Ricerca Open Library */}
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ fontSize: '0.8rem', color: palette.muted, display: 'block', marginBottom: '0.3rem' }}>🔍 Cerca per titolo o ISBN</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                style={{ border: `1px solid ${palette.accent}`, borderRadius: '8px', padding: '0.6rem', background: '#fff', width: '100%', boxSizing: 'border-box', fontSize: '0.9rem' }}
+                placeholder="Es. 'Il nome della rosa' oppure '9788845292613'"
+                value={searchQuery}
+                onChange={e => handleSearchChange(e.target.value)}
+              />
+              {searching && <div style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: palette.muted, fontSize: '0.8rem' }}>⏳</div>}
+              {searchResults.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: `1px solid ${palette.border}`, borderRadius: '8px', zIndex: 20, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: '300px', overflowY: 'auto' }}>
+                  {searchResults.map((r, i) => (
+                    <div key={i} onClick={() => selectFromSearch(r)}
+                      style={{ padding: '0.7rem 1rem', cursor: 'pointer', borderBottom: `1px solid ${palette.border}`, display: 'flex', gap: '0.8rem', alignItems: 'center' }}
+                      onMouseEnter={e => e.currentTarget.style.background = palette.accentLight}
+                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                      {r.cover_url
+                        ? <img src={r.cover_url} alt="" style={{ width: 36, height: 52, objectFit: 'cover', borderRadius: '4px', flexShrink: 0 }} />
+                        : <div style={{ width: 36, height: 52, background: palette.beige, borderRadius: '4px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>📚</div>
+                      }
+                      <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{r.title}</div>
+                        <div style={{ color: palette.muted, fontSize: '0.8rem' }}>{r.author} {r.year ? `· ${r.year}` : ''}</div>
+                        {r.publisher && <div style={{ color: palette.muted, fontSize: '0.75rem' }}>{r.publisher}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {bookSelected && (
+              <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: palette.accent }}>
+                ✅ Dati compilati da Open Library — puoi modificarli se necessario.
+              </div>
+            )}
+          </div>
+
+          {/* Anteprima copertina */}
+          {form.cover_url && (
+            <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <img src={form.cover_url} alt="Copertina" style={{ width: 60, height: 88, objectFit: 'cover', borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }} />
+              <div>
+                <div style={{ fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>{form.title}</div>
+                <div style={{ color: palette.muted, fontSize: '0.85rem' }}>{form.author_name}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Campi libro */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
             <input style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff', gridColumn: '1/-1' }} placeholder="Titolo *" value={form.title} onChange={e => f('title', e.target.value)} />
             <input style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff' }} placeholder="Casa editrice" value={form.publisher} onChange={e => f('publisher', e.target.value)} />
@@ -145,8 +284,10 @@ export default function Proposals({ isCapitano, currentMember, source }) {
             <select style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff', gridColumn: '1/-1' }} value={form.genre} onChange={e => f('genre', e.target.value)}>
               {GENRES.map(g => <option key={g}>{g}</option>)}
             </select>
+            <input style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff', gridColumn: '1/-1' }} placeholder="ISBN" value={form.isbn} onChange={e => f('isbn', e.target.value)} />
           </div>
 
+          {/* Autore */}
           <div style={{ fontWeight: 'bold', color: palette.accent, margin: '1rem 0 0.5rem', fontFamily: 'Georgia, serif' }}>✍️ Autore/Autrice</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
             <div style={{ gridColumn: '1/-1', position: 'relative' }}>
@@ -158,9 +299,7 @@ export default function Proposals({ isCapitano, currentMember, source }) {
                   disabled={authorLocked}
                   onChange={e => { f('author_name', e.target.value); searchAuthors(e.target.value); }}
                 />
-                {authorLocked && (
-                  <button onClick={clearAuthor} style={{ background: 'transparent', border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem 0.8rem', cursor: 'pointer', color: palette.muted, fontSize: '0.85rem' }}>✕ Cambia</button>
-                )}
+                {authorLocked && <button onClick={clearAuthor} style={{ background: 'transparent', border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem 0.8rem', cursor: 'pointer', color: palette.muted, fontSize: '0.85rem' }}>✕ Cambia</button>}
               </div>
               {authorSuggestions.length > 0 && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: `1px solid ${palette.border}`, borderRadius: '8px', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
@@ -194,28 +333,35 @@ export default function Proposals({ isCapitano, currentMember, source }) {
       )}
 
       {/* Lista proposte */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
         {proposals.length === 0 && <p style={{ color: palette.muted }}>Nessuna proposta ancora.</p>}
         {proposals.map(p => {
           const book = p.books;
           return (
-            <div key={p.id} style={{ background: palette.card, border: `1px solid ${palette.border}`, borderRadius: '12px', padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <div style={{ fontWeight: 'bold', fontFamily: 'Georgia, serif', fontSize: '1rem' }}>{book?.title}</div>
-              <div style={{ color: palette.muted, fontSize: '0.85rem' }}>{book?.authors?.name} · {book?.publication_year || '?'}</div>
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                {book?.genre && <span style={{ background: palette.accentLight, color: palette.accent, borderRadius: '20px', padding: '0.15rem 0.6rem', fontSize: '0.75rem' }}>{book.genre}</span>}
-                {book?.authors?.gender && <span style={{ background: palette.beige, borderRadius: '20px', padding: '0.15rem 0.6rem', fontSize: '0.75rem', color: palette.muted }}>{book.authors.gender}</span>}
-                {book?.authors?.nationality && <span style={{ background: palette.beige, borderRadius: '20px', padding: '0.15rem 0.6rem', fontSize: '0.75rem', color: palette.muted }}>{book.authors.nationality}</span>}
+            <div key={p.id} style={{ background: palette.card, border: `1px solid ${palette.border}`, borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              {/* Copertina */}
+              <div style={{ background: palette.beige, height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                {book?.cover_url
+                  ? <img src={book.cover_url} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: '3rem' }}>📚</span>
+                }
               </div>
-              {book?.publisher && <div style={{ fontSize: '0.8rem', color: palette.muted }}>🏠 {book.publisher}</div>}
-              {!isLibrary && p.members && <div style={{ fontSize: '0.8rem', color: palette.muted }}>🏴‍☠️ Proposto da {p.members.name}</div>}
-              <div style={{ fontSize: '0.8rem', color: palette.muted }}>📅 {new Date(p.created_at).toLocaleDateString('it-IT')}</div>
-
-              {isCapitano && (
-                <button onClick={() => removeProposal(p.id, book?.id)} style={{ marginTop: '0.5rem', background: 'transparent', border: `1px solid #e07070`, color: '#e07070', borderRadius: '8px', padding: '0.3rem 0.7rem', cursor: 'pointer', fontSize: '0.75rem', alignSelf: 'flex-end' }}>
-                  Rimuovi
-                </button>
-              )}
+              {/* Info */}
+              <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1 }}>
+                <div style={{ fontWeight: 'bold', fontFamily: 'Georgia, serif', fontSize: '0.95rem' }}>{book?.title}</div>
+                <div style={{ color: palette.muted, fontSize: '0.82rem' }}>{book?.authors?.name}</div>
+                <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                  {book?.genre && <span style={{ background: palette.accentLight, color: palette.accent, borderRadius: '20px', padding: '0.1rem 0.5rem', fontSize: '0.7rem' }}>{book.genre}</span>}
+                  {book?.authors?.gender && <span style={{ background: palette.beige, borderRadius: '20px', padding: '0.1rem 0.5rem', fontSize: '0.7rem', color: palette.muted }}>{book.authors.gender}</span>}
+                </div>
+                {!isLibrary && p.members && <div style={{ fontSize: '0.78rem', color: palette.muted, marginTop: '0.3rem' }}>🏴‍☠️ {p.members.name}</div>}
+                <div style={{ fontSize: '0.75rem', color: palette.muted }}>{new Date(p.created_at).toLocaleDateString('it-IT')}</div>
+                {isCapitano && (
+                  <button onClick={() => removeProposal(p.id, book?.id)} style={{ marginTop: '0.5rem', background: 'transparent', border: `1px solid #e07070`, color: '#e07070', borderRadius: '8px', padding: '0.3rem 0.7rem', cursor: 'pointer', fontSize: '0.75rem', alignSelf: 'flex-end' }}>
+                    Rimuovi
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}
