@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import bcrypt from 'bcryptjs';
 import { supabase } from '../supabase';
-import { color, font, text, space, radius, shadow, heading, btn, input as inputStyle } from '../theme';
+import { color, font, text, space, radius, shadow, heading, input as inputStyle } from '../theme';
 
 export default function Login({ onLogin }) {
   const [mode,     setMode]     = useState('login'); // 'login' | 'register'

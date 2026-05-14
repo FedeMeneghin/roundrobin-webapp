@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
-import { color, font, text, space, radius, shadow, heading, btn, badge } from '../theme';
+import { color, font, text, space, radius, shadow, btn, badge } from '../theme';
 
 function Stars({ value, onChange }) {
   const [hover, setHover] = useState(0);
