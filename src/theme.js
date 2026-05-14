@@ -1,98 +1,103 @@
 export const t = {
   // Colori
-  bg:          '#ffffff',
-  bgSoft:      '#f7f8f6',
-  accent:      '#2d6a4f',
-  accentMid:   '#52b788',
-  accentLight: '#d8f3dc',
-  text:        '#1a1a1a',
-  textSoft:    '#555555',
-  muted:       '#999999',
-  border:      '#e8ebe8',
-  card:        '#ffffff',
-  danger:      '#d62828',
-  dangerLight: '#fde8e8',
-  gold:        '#d4a017',
+  bg: '#f6f1e8',
+  bgSoft: '#fbf8f3',
+  accent: '#6f8f72',
+  accentMid: '#89a98c',
+  accentLight: '#edf3ec',
+  text: '#1f1f1c',
+  textSoft: '#5f5a52',
+  muted: '#8b857d',
+  border: '#ece6dc',
+  card: '#fffdf9',
+  danger: '#c94b4b',
+  dangerLight: '#f9ebeb',
+  gold: '#b78b2e',
 
-  // Tipografia
+  // Typography
   fontSans: "'Inter', 'Segoe UI', sans-serif",
-  fontSerif: "'Georgia', serif",
+  fontSerif: "'Cormorant Garamond', serif",
 
-  // Radii
-  radius:   '12px',
-  radiusSm: '8px',
-  radiusLg: '20px',
-  radiusPill: '100px',
+  // Radius
+  radius: '8px',
+  radiusSm: '6px',
+  radiusLg: '12px',
+  radiusPill: '999px',
 
-  // Ombre
-  shadow:   '0 2px 12px rgba(0,0,0,0.07)',
-  shadowMd: '0 4px 24px rgba(0,0,0,0.10)',
+  // Shadows
+  shadow: '0 2px 10px rgba(0,0,0,0.03)',
+  shadowMd: '0 6px 24px rgba(0,0,0,0.04)',
 
-  // Spaziatura
-  gap: '1rem',
-  gapSm: '0.5rem',
-  gapLg: '1.5rem',
+  // Spacing
+  gap: '1.2rem',
+  gapSm: '0.6rem',
+  gapLg: '2rem',
 };
 
 export const btn = {
   primary: {
-    background: '#2d6a4f',
+    background: '#6f8f72',
     color: '#ffffff',
     border: 'none',
-    borderRadius: '100px',
-    padding: '0.6rem 1.4rem',
+    borderRadius: '999px',
+    padding: '0.75rem 1.5rem',
     cursor: 'pointer',
-    fontSize: '0.88rem',
+    fontSize: '0.92rem',
     fontWeight: '600',
     letterSpacing: '0.01em',
+    transition: 'all 0.2s ease',
   },
+
   secondary: {
     background: 'transparent',
-    color: '#2d6a4f',
-    border: '1.5px solid #2d6a4f',
-    borderRadius: '100px',
-    padding: '0.55rem 1.4rem',
+    color: '#6f8f72',
+    border: '1px solid #d8d2c8',
+    borderRadius: '999px',
+    padding: '0.7rem 1.4rem',
     cursor: 'pointer',
-    fontSize: '0.88rem',
+    fontSize: '0.9rem',
     fontWeight: '600',
   },
+
   ghost: {
     background: 'transparent',
-    color: '#999',
-    border: '1.5px solid #e8ebe8',
-    borderRadius: '100px',
-    padding: '0.55rem 1.4rem',
+    color: '#8b857d',
+    border: '1px solid transparent',
+    borderRadius: '999px',
+    padding: '0.7rem 1.4rem',
     cursor: 'pointer',
-    fontSize: '0.88rem',
+    fontSize: '0.9rem',
   },
+
   danger: {
     background: 'transparent',
-    color: '#d62828',
-    border: '1.5px solid #d62828',
-    borderRadius: '8px',
-    padding: '0.3rem 0.7rem',
+    color: '#c94b4b',
+    border: '1px solid #c94b4b',
+    borderRadius: '6px',
+    padding: '0.35rem 0.8rem',
     cursor: 'pointer',
-    fontSize: '0.78rem',
+    fontSize: '0.8rem',
   },
 };
 
 export const input = {
-  border: '1.5px solid #e8ebe8',
-  borderRadius: '10px',
-  padding: '0.65rem 0.9rem',
+  border: '1px solid transparent',
+  borderRadius: '8px',
+  padding: '0.85rem 1rem',
   width: '100%',
-  fontSize: '0.92rem',
-  background: '#f7f8f6',
-  color: '#1a1a1a',
+  fontSize: '0.96rem',
+  background: '#f3eee5',
+  color: '#1f1f1c',
   boxSizing: 'border-box',
   outline: 'none',
+  transition: 'all 0.2s ease',
 };
 
-export const badge = (color = '#d8f3dc', text = '#2d6a4f') => ({
+export const badge = (color = '#edf3ec', text = '#6f8f72') => ({
   background: color,
   color: text,
-  borderRadius: '100px',
-  padding: '0.15rem 0.65rem',
+  borderRadius: '999px',
+  padding: '0.2rem 0.7rem',
   fontSize: '0.72rem',
   fontWeight: '600',
   display: 'inline-block',
@@ -100,9 +105,9 @@ export const badge = (color = '#d8f3dc', text = '#2d6a4f') => ({
 });
 
 export const card = {
-  background: '#ffffff',
-  borderRadius: '16px',
-  boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
-  padding: '1.4rem',
-  border: 'none',
+  background: '#fffdf9',
+  borderRadius: '12px',
+  boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+  padding: '1.8rem',
+  border: '1px solid #f0ebe3',
 };

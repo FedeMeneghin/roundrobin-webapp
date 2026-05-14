@@ -133,21 +133,3 @@ create table events (
   title text not null,
   created_at timestamptz default now()
 );
-
--- ============================================
--- DISABILITA RLS (per ora)
--- ============================================
-alter table members disable row level security;
-alter table authors disable row level security;
-alter table books disable row level security;
-alter table proposals disable row level security;
-alter table book_ratings disable row level security;
-alter table voting_sessions disable row level security;
-alter table voting_candidates disable row level security;
-alter table voting_votes disable row level security;
-alter table events disable row level security;
-
--- ============================================
--- aggiungo password
--- ============================================
-alter table members add column password_hash text;
