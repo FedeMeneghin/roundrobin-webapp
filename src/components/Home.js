@@ -206,7 +206,7 @@ export default function Home({ currentMember, isCapitano }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: space[4] }}>
                 {[
                   { label: 'Libri letti',         value: stats.books,     icon: '📚' },
-                  { label: 'Pirati a bordo',       value: stats.members,   icon: '🏴‍☠️' },
+                  { label: 'Partecipanti attivi',       value: stats.members,   icon: '🏴‍☠️' },
                   { label: 'Proposte in archivio', value: stats.proposals, icon: '📋' },
                 ].map(s => (
                   <div key={s.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

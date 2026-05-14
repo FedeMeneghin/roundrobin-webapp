@@ -6,9 +6,9 @@ const tabs = [
   { id: 'calendar', label: 'Calendario',    icon: '📅' },
   { id: 'library',  label: 'Libreria',      icon: '📚' },
   { id: 'libsugg',  label: 'Prop. libreria',icon: '🏛️' },
-  { id: 'usersugg', label: 'Prop. pirati',  icon: '💬' },
+  { id: 'usersugg', label: 'Prop. partecipanti',  icon: '💬' },
   { id: 'voting',   label: 'Votazione',     icon: '🗳️' },
-  { id: 'members',  label: 'Pirati',        icon: '👥' },
+  { id: 'members',  label: 'Partecipanti',        icon: '👥' },
 ];
 
 export default function Navbar({ activeTab, setActiveTab, isCapitano, currentMember, onLogout }) {

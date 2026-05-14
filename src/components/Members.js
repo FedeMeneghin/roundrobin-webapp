@@ -46,7 +46,7 @@ export default function Members({ isCapitano }) {
       {/* Header */}
       <div style={{ background: color.surface, borderRadius: radius.md, boxShadow: shadow.sm, border: `1px solid ${color.border}`, padding: space[6] }}>
         <div style={{ ...heading.section, marginBottom: space[5] }}>
-          👥 Pirati del Club ({members.length})
+          👥 partecipanti del Club ({members.length})
         </div>
 
         {error && (
@@ -56,7 +56,7 @@ export default function Members({ isCapitano }) {
         )}
 
         {loading ? (
-          <div style={{ color: color.muted, fontSize: text.sm, fontFamily: font.body }}>Caricamento pirati...</div>
+          <div style={{ color: color.muted, fontSize: text.sm, fontFamily: font.body }}>Caricamento partecipanti...</div>
         ) : members.length === 0 ? (
           <div style={{ textAlign: 'center', padding: `${space[8]} 0`, color: color.muted, fontFamily: font.body }}>
             <div style={{ fontSize: '2.5rem', marginBottom: space[3] }}>🏴‍☠️</div>
