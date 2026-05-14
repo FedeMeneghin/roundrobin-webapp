@@ -23,7 +23,7 @@ export default function Home({ currentMember, isCapitano }) {
   const [upcomingEvents,  setUpcomingEvents]  = useState([]);
   const [stats,           setStats]           = useState({ books: 0, members: 0, proposals: 0 });
   const [loading,         setLoading]         = useState(true);
-  const [settingActive,   setSettingActive]   = useState(false);
+  //const [settingActive,   setSettingActive]   = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchAll(); }, []);
@@ -57,6 +57,7 @@ export default function Home({ currentMember, isCapitano }) {
     setStats({ books: books || 0, members: members || 0, proposals: proposals || 0 });
   }
 
+  /*
   async function setBookOfMonth(bookId) {
     setSettingActive(true);
     // Rimetti tutti gli 'active' in 'backlog' prima
@@ -69,6 +70,7 @@ export default function Home({ currentMember, isCapitano }) {
     setSettingActive(false);
     fetchAll();
   }
+  */
 
   return (
     <>
