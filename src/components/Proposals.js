@@ -32,6 +32,7 @@ export default function Proposals({ isCapitano, currentMember, source }) {
   const [form, setForm] = useState(emptyForm);
   const f = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchProposals(); }, [source]);
 
   async function fetchProposals() {

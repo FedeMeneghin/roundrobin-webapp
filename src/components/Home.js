@@ -18,6 +18,7 @@ export default function Home({ currentMember, isCapitano }) {
   const [stats, setStats] = useState({ books: 0, members: 0, proposals: 0 });
   const [loading, setLoading] = useState(true);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchAll(); }, []);
 
   async function fetchAll() {

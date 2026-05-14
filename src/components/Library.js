@@ -34,6 +34,7 @@ export default function Library({ isCapitano, currentMember }) {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('completed');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchBooks(); }, [filter]);
 
   async function fetchBooks() {
