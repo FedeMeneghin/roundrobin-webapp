@@ -32,9 +32,9 @@ export default function Navbar({ activeTab, setActiveTab, isCapitano, currentMem
                 Capitano
               </span>
             )}
-            <span style={{ color: t.textSoft, fontSize: '0.88rem', display: 'none', ['@media(min-width:600px)']: { display: 'block' } }}>
-              {currentMember?.name}
-            </span>
+              <span style={{ color: t.textSoft, fontSize: '0.88rem' }}>
+                {currentMember?.name}
+              </span>
             <button onClick={onLogout} style={{ ...btn.ghost, padding: '0.35rem 0.9rem', fontSize: '0.82rem' }}>
               Esci
             </button>
