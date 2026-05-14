@@ -1,270 +1,371 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
+import { color, font, text, space, radius, shadow, heading, btn, badge, input as inputStyle } from '../theme';
 
-const palette = {
-  bg: '#faf8f4',
-  card: '#ffffff',
-  accent: '#7a9e7e',
-  accentLight: '#e8f0e9',
-  muted: '#888',
-  border: '#e8e4de',
-  beige: '#f2ece2',
-  gold: '#c9a84c',
+// ── Colori per tipo evento ──────────────────────────────────
+const TYPE = {
+  ufficiale: {
+    label:   '⚓ Ufficiale',
+    bg:      color.primarySoft,
+    fg:      color.primaryDark,
+    border:  color.primary,
+    dateBg:  color.primary,
+    dateFg:  '#fff',
+  },
+  vario: {
+    label:   '🗺️ Vario',
+    bg:      color.warningSoft,
+    fg:      '#7a4f00',
+    border:  color.warning,
+    dateBg:  color.bgSoft,
+    dateFg:  color.textSoft,
+  },
 };
 
 function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(dateStr).toLocaleDateString('it-IT', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
 }
 
 function toICS(event) {
-  const uid = event.id + '@bookclubpirati';
-  const dt = event.date.replace(/-/g, '');
+  const uid   = event.id + '@roundrobin';
+  const dt    = event.date.replace(/-/g, '');
   const stamp = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
-  const desc = event.notes ? event.notes.replace(/\n/g, '\\n') : '';
+  const desc  = event.notes ? event.notes.replace(/\n/g, '\\n') : '';
   return [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Book Club dei Pirati//IT',
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Round Robin Book Club//IT',
     'BEGIN:VEVENT',
-    `UID:${uid}`,
-    `DTSTAMP:${stamp}`,
-    `DTSTART;VALUE=DATE:${dt}`,
-    `DTEND;VALUE=DATE:${dt}`,
-    `SUMMARY:${event.title}`,
-    `DESCRIPTION:${desc}`,
-    'END:VEVENT',
-    'END:VCALENDAR',
+    `UID:${uid}`, `DTSTAMP:${stamp}`,
+    `DTSTART;VALUE=DATE:${dt}`, `DTEND;VALUE=DATE:${dt}`,
+    `SUMMARY:${event.title}`, `DESCRIPTION:${desc}`,
+    'END:VEVENT', 'END:VCALENDAR',
   ].join('\r\n');
 }
 
 function downloadICS(event) {
   const blob = new Blob([toICS(event)], { type: 'text/calendar;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${event.title.replace(/\s+/g, '_')}.ics`;
-  a.click();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `${event.title}.ics`; a.click();
   URL.revokeObjectURL(url);
 }
 
-export default function Calendar({ isCapitano, currentMember }) {
-  const [events, setEvents] = useState([]);
-  const [rsvps, setRsvps] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ date: '', title: '', notes: '', type: 'ufficiale' });
+export default function Calendar({ isCapitano }) {
+  const [events,    setEvents]    = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState(null);
+  const [showAdd,   setShowAdd]   = useState(false);
+  const [editingId, setEditingId] = useState(null);
+
+  const emptyForm = { title: '', date: '', type: 'ufficiale', location: '', notes: '' };
+  const [form, setForm] = useState(emptyForm);
   const f = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
-  useEffect(() => {
-    fetchAll();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { fetchEvents(); }, []);
 
-  async function fetchAll() {
+  async function fetchEvents() {
     setLoading(true);
-    await Promise.all([fetchEvents(), fetchRsvps()]);
+    const { data, error } = await supabase
+      .from('events').select('*').order('date', { ascending: true });
+    if (error) setError(error.message);
+    else setEvents(data || []);
     setLoading(false);
   }
 
-  async function fetchEvents() {
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .order('date', { ascending: true });
-    if (error) setError(error.message);
-    else setEvents(data || []);
-  }
-
-  async function fetchRsvps() {
-    if (!currentMember) return;
-    const { data } = await supabase
-      .from('event_rsvp')
-      .select('event_id')
-      .eq('member_id', currentMember.id);
-    setRsvps((data || []).map(r => r.event_id));
-  }
-
-  async function addEvent() {
-    if (!form.date || !form.title.trim()) return;
-    const { error } = await supabase.from('events').insert({
-      date: form.date,
-      title: form.title.trim(),
-      notes: form.notes.trim() || null,
-      type: form.type,
-    });
-    if (error) { setError(error.message); return; }
-    setForm({ date: '', title: '', notes: '', type: 'ufficiale' });
-    setShowAdd(false);
-    fetchEvents();
+  async function saveEvent() {
+    if (!form.title || !form.date) return;
+    const payload = {
+      title:    form.title.trim(),
+      date:     form.date,
+      type:     form.type,
+      location: form.location || null,
+      notes:    form.notes    || null,
+    };
+    let err;
+    if (editingId) {
+      ({ error: err } = await supabase.from('events').update(payload).eq('id', editingId));
+    } else {
+      ({ error: err } = await supabase.from('events').insert(payload));
+    }
+    if (err) { setError(err.message); return; }
+    setForm(emptyForm); setShowAdd(false); setEditingId(null); fetchEvents();
   }
 
   async function removeEvent(id) {
     if (!window.confirm('Rimuovere questo evento?')) return;
-    const { error } = await supabase.from('events').delete().eq('id', id);
-    if (error) setError(error.message);
-    else fetchEvents();
+    await supabase.from('events').delete().eq('id', id);
+    fetchEvents();
   }
 
-  async function toggleRsvp(eventId) {
-    if (!currentMember) return;
-    const going = rsvps.includes(eventId);
-    if (going) {
-      await supabase.from('event_rsvp').delete().eq('event_id', eventId).eq('member_id', currentMember.id);
-      setRsvps(rsvps.filter(id => id !== eventId));
-    } else {
-      await supabase.from('event_rsvp').insert({ event_id: eventId, member_id: currentMember.id });
-      setRsvps([...rsvps, eventId]);
-    }
+  function startEdit(e) {
+    setForm({ title: e.title, date: e.date, type: e.type || 'ufficiale', location: e.location || '', notes: e.notes || '' });
+    setEditingId(e.id);
+    setShowAdd(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today    = new Date().toISOString().slice(0, 10);
   const upcoming = events.filter(e => e.date >= today);
-  const past = events.filter(e => e.date < today);
+  const past     = events.filter(e => e.date <  today);
 
-  function isToday(d) { return d === today; }
-  function isSoon(d) {
-    const diff = (new Date(d) - new Date()) / (1000 * 60 * 60 * 24);
-    return diff >= 0 && diff <= 7;
-  }
-
-  function EventCard({ e, isPast = false }) {
-    const going = rsvps.includes(e.id);
-    const isUfficiale = e.type === 'ufficiale';
-
+  // ── Componente card evento ──────────────────────────────────
+  function EventCard({ e, isPast }) {
+    const t = TYPE[e.type] || TYPE.ufficiale;
     return (
-      <div style={{ background: isPast ? 'transparent' : palette.card, border: `1px solid ${isToday(e.date) ? palette.accent : palette.border}`, borderRadius: '12px', padding: isPast ? '0.8rem 1.2rem' : '1.2rem', display: 'flex', gap: '1rem', alignItems: 'flex-start', opacity: isPast ? 0.6 : 1 }}>
-        {/* Data */}
-        <div style={{ background: isPast ? palette.beige : isUfficiale && isSoon(e.date) ? palette.accent : palette.beige, borderRadius: '10px', padding: '0.5rem 0.8rem', textAlign: 'center', minWidth: '56px', flexShrink: 0 }}>
-          <div style={{ fontSize: isPast ? '1rem' : '1.3rem', fontWeight: 'bold', color: !isPast && isUfficiale && isSoon(e.date) ? '#fff' : palette.accent, lineHeight: 1 }}>
-            {new Date(e.date).getDate()}
+      <div style={{
+        background:   isPast ? color.bgSoft : color.surface,
+        border:       `1px solid ${isPast ? color.border : t.border}`,
+        borderRadius: radius.md,
+        boxShadow:    isPast ? 'none' : shadow.sm,
+        padding:      space[5],
+        display:      'flex', flexDirection: 'column', gap: space[3],
+        opacity:      isPast ? 0.70 : 1,
+        transition:   'all 0.18s ease',
+      }}>
+
+        {/* Riga superiore: data + titolo + badge tipo */}
+        <div style={{ display: 'flex', gap: space[3], alignItems: 'flex-start' }}>
+
+          {/* Data box — colorato se ufficiale e futuro */}
+          <div style={{
+            background:   isPast ? color.bgSoft : t.dateBg,
+            color:        isPast ? color.muted  : t.dateFg,
+            border:       `1px solid ${isPast ? color.border : t.border}`,
+            borderRadius: radius.sm,
+            padding:      `${space[2]} ${space[3]}`,
+            fontSize:     text.xs,
+            fontWeight:   '700',
+            fontFamily:   font.body,
+            textAlign:    'center',
+            minWidth:     '58px',
+            flexShrink:   0,
+            lineHeight:   1.3,
+          }}>
+            {new Date(e.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
+            <div style={{ fontSize: '0.65rem', marginTop: '2px', fontWeight: '500', opacity: 0.8 }}>
+              {new Date(e.date).getFullYear()}
+            </div>
           </div>
-          <div style={{ fontSize: '0.7rem', color: !isPast && isUfficiale && isSoon(e.date) ? '#ffffffaa' : palette.muted, textTransform: 'uppercase' }}>
-            {new Date(e.date).toLocaleDateString('it-IT', { month: 'short' })}
+
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: font.heading, fontWeight: '700', fontSize: text.lg, color: color.text, lineHeight: 1.2 }}>
+              {e.title}
+            </div>
+            <div style={{ fontSize: text.xs, color: color.muted, marginTop: space[1], fontFamily: font.body, fontStyle: 'italic' }}>
+              {formatDate(e.date)}
+            </div>
           </div>
+
+          {/* Badge tipo — sempre visibile */}
+          <span style={{
+            ...badge(t.bg, t.fg),
+            border:     `1px solid ${t.border}`,
+            flexShrink: 0,
+            alignSelf:  'flex-start',
+          }}>
+            {t.label}
+          </span>
         </div>
 
-        {/* Contenuto */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <div style={{ fontWeight: 'bold', fontFamily: 'Georgia, serif', fontSize: isPast ? '0.9rem' : '1rem' }}>{e.title}</div>
-            {/* Badge tipo */}
-            <span style={{ background: isUfficiale ? palette.accentLight : palette.beige, color: isUfficiale ? palette.accent : palette.muted, borderRadius: '20px', padding: '0.1rem 0.6rem', fontSize: '0.7rem', border: `1px solid ${isUfficiale ? palette.accent : palette.border}` }}>
-              {isUfficiale ? '⚓ Ufficiale' : '🗺️ Vario'}
-            </span>
-            {isToday(e.date) && <span style={{ background: palette.accent, color: '#fff', borderRadius: '20px', padding: '0.1rem 0.6rem', fontSize: '0.7rem' }}>Oggi!</span>}
-            {isSoon(e.date) && !isToday(e.date) && <span style={{ background: palette.accentLight, color: palette.accent, borderRadius: '20px', padding: '0.1rem 0.6rem', fontSize: '0.7rem' }}>Questa settimana</span>}
+        {/* Luogo */}
+        {e.location && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: space[2], fontSize: text.sm, color: color.textSoft, fontFamily: font.body }}>
+            📍 {e.location}
           </div>
-          {!isPast && <div style={{ fontSize: '0.8rem', color: palette.muted, marginTop: '0.2rem' }}>{formatDate(e.date)}</div>}
-          {!isPast && e.notes && (
-            <div style={{ fontSize: '0.85rem', color: palette.muted, marginTop: '0.5rem', borderTop: `1px solid ${palette.border}`, paddingTop: '0.5rem' }}>
-              {e.notes}
-            </div>
-          )}
-
-          {/* Azioni */}
-          {!isPast && (
-            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
-              {/* RSVP */}
-              {currentMember && !isCapitano && (
-                <button onClick={() => toggleRsvp(e.id)} style={{ background: going ? palette.accent : 'transparent', color: going ? '#fff' : palette.muted, border: `1px solid ${going ? palette.accent : palette.border}`, borderRadius: '8px', padding: '0.3rem 0.8rem', cursor: 'pointer', fontSize: '0.8rem' }}>
-                  {going ? '✅ Ci sarò' : '👋 Ci sarò?'}
-                </button>
-              )}
-              {/* Scarica ICS */}
-              <button onClick={() => downloadICS(e)} style={{ background: 'transparent', color: palette.muted, border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.3rem 0.8rem', cursor: 'pointer', fontSize: '0.8rem' }}>
-                📅 Aggiungi al calendario
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Rimuovi (solo capitano) */}
-        {isCapitano && (
-          <button onClick={() => removeEvent(e.id)} style={{ background: 'transparent', border: `1px solid #e07070`, color: '#e07070', borderRadius: '8px', padding: '0.3rem 0.7rem', cursor: 'pointer', fontSize: '0.75rem', flexShrink: 0 }}>
-            Rimuovi
-          </button>
         )}
+
+        {/* Note */}
+        {e.notes && (
+          <div style={{ fontSize: text.sm, color: color.textSoft, fontFamily: font.body, background: color.bgSoft, borderRadius: radius.xs, padding: `${space[3]} ${space[4]}`, lineHeight: 1.6 }}>
+            {e.notes}
+          </div>
+        )}
+
+        {/* Azioni */}
+        <div style={{ display: 'flex', gap: space[2], flexWrap: 'wrap', alignItems: 'center' }}>
+          <button onClick={() => downloadICS(e)} style={{ ...btn.ghost, fontSize: text.xs, padding: `${space[2]} ${space[3]}` }}>
+            📅 Esporta .ics
+          </button>
+          {isCapitano && (
+            <>
+              <button onClick={() => startEdit(e)} style={{ ...btn.secondary, fontSize: text.xs, padding: `${space[2]} ${space[3]}` }}>
+                ✏️ Modifica
+              </button>
+              <button onClick={() => removeEvent(e.id)} style={{ ...btn.danger, fontSize: text.xs }}>
+                Rimuovi
+              </button>
+            </>
+          )}
+        </div>
       </div>
     );
   }
 
-  if (loading) return <p style={{ padding: '2rem', color: palette.muted }}>Caricamento calendario...</p>;
+  // ── Form field helpers ─────────────────────────────────────
+  const Field = ({ label, children }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: space[1] }}>
+      <label style={{ fontSize: text.xs, color: color.textSoft, fontFamily: font.body, fontWeight: '600' }}>{label}</label>
+      {children}
+    </div>
+  );
+  const fieldStyle = { ...inputStyle, fontSize: text.sm, padding: `${space[2]} ${space[3]}` };
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: space[6] }}>
+
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div style={{ color: palette.muted, fontSize: '0.9rem' }}>
-          {upcoming.length} {upcoming.length === 1 ? 'evento in programma' : 'eventi in programma'}
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ ...heading.section }}>📅 Calendario incontri</div>
         {isCapitano && (
-          <button onClick={() => setShowAdd(!showAdd)} style={{ background: palette.accent, color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1.1rem', cursor: 'pointer', fontSize: '0.85rem' }}>
-            {showAdd ? 'Annulla' : '+ Aggiungi evento'}
+          <button onClick={() => { setShowAdd(!showAdd); setForm(emptyForm); setEditingId(null); }}
+            style={{ ...btn.primary }}>
+            {showAdd ? 'Annulla' : '+ Nuovo evento'}
           </button>
         )}
       </div>
 
-      {error && <p style={{ color: 'red', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</p>}
+      {error && <div style={{ color: color.danger, fontSize: text.sm, fontFamily: font.body }}>{error}</div>}
 
-      {/* Form aggiunta */}
+      {/* ── FORM ── */}
       {showAdd && isCapitano && (
-        <div style={{ background: palette.beige, border: `1px solid ${palette.border}`, borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ fontWeight: 'bold', color: palette.accent, marginBottom: '1rem', fontFamily: 'Georgia, serif' }}>📅 Nuovo evento</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-            <div>
-              <label style={{ fontSize: '0.8rem', color: palette.muted, display: 'block', marginBottom: '0.3rem' }}>Tipo di evento</label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {['ufficiale', 'vario'].map(t => (
-                  <button key={t} onClick={() => f('type', t)} style={{ background: form.type === t ? palette.accent : 'transparent', color: form.type === t ? '#fff' : palette.muted, border: `1px solid ${form.type === t ? palette.accent : palette.border}`, borderRadius: '20px', padding: '0.3rem 0.9rem', cursor: 'pointer', fontSize: '0.85rem' }}>
-                    {t === 'ufficiale' ? '⚓ Ufficiale' : '🗺️ Vario'}
-                  </button>
-                ))}
-              </div>
+        <div style={{ background: color.surface, borderRadius: radius.md, boxShadow: shadow.sm, border: `1px solid ${color.border}`, padding: space[6] }}>
+          <div style={{ ...heading.md, marginBottom: space[5] }}>
+            {editingId ? '✏️ Modifica evento' : '➕ Nuovo evento'}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: space[4] }}>
+
+            {/* Titolo */}
+            <div style={{ gridColumn: '1/-1' }}>
+              <Field label="Titolo *">
+                <input style={fieldStyle} placeholder="Es. Incontro mensile" value={form.title} onChange={e => f('title', e.target.value)} />
+              </Field>
             </div>
-            <div>
-              <label style={{ fontSize: '0.8rem', color: palette.muted, display: 'block', marginBottom: '0.3rem' }}>Data *</label>
-              <input type="date" style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff', width: '100%', boxSizing: 'border-box' }}
-                value={form.date} onChange={e => f('date', e.target.value)} />
+
+            {/* Data */}
+            <Field label="Data *">
+              <input type="date" style={fieldStyle} value={form.date} onChange={e => f('date', e.target.value)} />
+            </Field>
+
+            {/* Luogo */}
+            <Field label="Luogo">
+              <input style={fieldStyle} placeholder="Es. Casa di Marco" value={form.location} onChange={e => f('location', e.target.value)} />
+            </Field>
+
+            {/* Tipo evento */}
+            <div style={{ gridColumn: '1/-1' }}>
+              <Field label="Tipo di evento">
+                <div style={{ display: 'flex', gap: space[3] }}>
+                  {['ufficiale', 'vario'].map(tipo => {
+                    const t = TYPE[tipo];
+                    const active = form.type === tipo;
+                    return (
+                      <button key={tipo} onClick={() => f('type', tipo)} style={{
+                        flex: 1,
+                        background: active ? t.bg      : color.surface,
+                        color:      active ? t.fg      : color.textSoft,
+                        border:     `1.5px solid ${active ? t.border : color.border}`,
+                        borderRadius: radius.sm,
+                        padding: `${space[3]} ${space[4]}`,
+                        cursor: 'pointer',
+                        fontSize: text.sm,
+                        fontWeight: active ? '700' : '500',
+                        fontFamily: font.body,
+                        transition: 'all 0.15s ease',
+                      }}>
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
             </div>
-            <div>
-              <label style={{ fontSize: '0.8rem', color: palette.muted, display: 'block', marginBottom: '0.3rem' }}>Titolo *</label>
-              <input style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff', width: '100%', boxSizing: 'border-box' }}
-                placeholder="Es. Incontro mensile — Siddharta" value={form.title} onChange={e => f('title', e.target.value)} />
+
+            {/* Note */}
+            <div style={{ gridColumn: '1/-1' }}>
+              <Field label="Note">
+                <textarea style={{ ...fieldStyle, height: '90px', resize: 'vertical', lineHeight: 1.6 }}
+                  placeholder="Dettagli, tema della serata..."
+                  value={form.notes} onChange={e => f('notes', e.target.value)} />
+              </Field>
             </div>
-            <div>
-              <label style={{ fontSize: '0.8rem', color: palette.muted, display: 'block', marginBottom: '0.3rem' }}>Note</label>
-              <textarea style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff', width: '100%', boxSizing: 'border-box', resize: 'vertical', minHeight: '80px', fontFamily: 'inherit', fontSize: '0.9rem' }}
-                placeholder="Luogo, link di videochiamata, indicazioni..." value={form.notes} onChange={e => f('notes', e.target.value)} />
-            </div>
-            <button onClick={addEvent} style={{ background: palette.accent, color: '#fff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', cursor: 'pointer', fontSize: '0.9rem', alignSelf: 'flex-start' }}>
-              Salva evento
+          </div>
+
+          <div style={{ display: 'flex', gap: space[3], justifyContent: 'flex-end', borderTop: `1px solid ${color.border}`, paddingTop: space[4], marginTop: space[4] }}>
+            <button onClick={() => { setShowAdd(false); setForm(emptyForm); setEditingId(null); }} style={{ ...btn.ghost }}>
+              Annulla
+            </button>
+            <button onClick={saveEvent} style={{ ...btn.primary }} disabled={!form.title || !form.date}>
+              {editingId ? 'Salva modifiche' : 'Aggiungi evento'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Eventi in programma */}
-      {upcoming.length === 0 ? (
-        <div style={{ background: palette.card, border: `1px solid ${palette.border}`, borderRadius: '12px', padding: '2rem', textAlign: 'center', color: palette.muted, fontStyle: 'italic' }}>
-          Nessun evento in programma.{isCapitano && ' Aggiungine uno!'}
+      {/* ── LISTA ── */}
+      {loading ? (
+        <div style={{ color: color.muted, fontSize: text.sm, fontFamily: font.body, padding: space[4] }}>
+          Caricamento calendario...
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '2rem' }}>
-          {upcoming.map(e => <EventCard key={e.id} e={e} />)}
-        </div>
-      )}
+        <>
+          {/* Prossimi eventi — raggruppati per tipo */}
+          {upcoming.length > 0 ? (
+            <div>
+              <div style={{ ...heading.md, marginBottom: space[4] }}>🗓️ Prossimi incontri</div>
 
-      {/* Archivio */}
-      {past.length > 0 && (
-        <div>
-          <div style={{ color: palette.muted, fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '0.8rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-            Archivio
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-            {[...past].reverse().map(e => <EventCard key={e.id} e={e} isPast />)}
-          </div>
-        </div>
+              {/* Ufficiali in evidenza */}
+              {upcoming.filter(e => (e.type || 'ufficiale') === 'ufficiale').length > 0 && (
+                <div style={{ marginBottom: space[5] }}>
+                  <div style={{ fontSize: text.xs, fontWeight: '700', color: color.primaryDark, fontFamily: font.body, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: space[3] }}>
+                    ⚓ Incontri ufficiali
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: space[3] }}>
+                    {upcoming.filter(e => (e.type || 'ufficiale') === 'ufficiale').map(e =>
+                      <EventCard key={e.id} e={e} isPast={false} />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Altri eventi */}
+              {upcoming.filter(e => e.type === 'vario').length > 0 && (
+                <div>
+                  <div style={{ fontSize: text.xs, fontWeight: '700', color: '#7a4f00', fontFamily: font.body, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: space[3] }}>
+                    🗺️ Altri eventi
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: space[3] }}>
+                    {upcoming.filter(e => e.type === 'vario').map(e =>
+                      <EventCard key={e.id} e={e} isPast={false} />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ background: color.surface, borderRadius: radius.md, boxShadow: shadow.sm, border: `1px solid ${color.border}`, padding: `${space[10]} ${space[6]}`, textAlign: 'center' }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: space[3] }}>🗓️</div>
+              <div style={{ color: color.muted, fontFamily: font.body, fontSize: text.md }}>Nessun evento in programma.</div>
+              {isCapitano && <div style={{ color: color.muted, fontSize: text.sm, marginTop: space[2], fontFamily: font.body }}>Aggiungine uno con il bottone qui sopra!</div>}
+            </div>
+          )}
+
+          {/* Passati — collassabili */}
+          {past.length > 0 && (
+            <details style={{ background: color.bgSoft, borderRadius: radius.md, border: `1px solid ${color.border}`, padding: space[5] }}>
+              <summary style={{ cursor: 'pointer', fontFamily: font.body, fontWeight: '600', fontSize: text.sm, color: color.textSoft, userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: space[2] }}>
+                <span style={{ background: color.bgSoft, color: color.muted, borderRadius: radius.pill, padding: '0.25rem 0.7rem', fontSize: text.xs, fontWeight: '700', border: `1px solid ${color.border}` }}>
+                  ⏪ {past.length} evento{past.length !== 1 ? 'i' : ''} passato{past.length !== 1 ? 'i' : ''}
+                </span>
+              </summary>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: space[3], marginTop: space[4] }}>
+                {[...past].reverse().map(e => <EventCard key={e.id} e={e} isPast />)}
+              </div>
+            </details>
+          )}
+        </>
       )}
     </div>
   );

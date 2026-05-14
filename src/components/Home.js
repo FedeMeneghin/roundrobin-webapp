@@ -1,379 +1,228 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
+import { color, font, text, space, radius, shadow, heading, badge } from '../theme';
 
-const palette = {
-  bg: '#f6f1e8',
-  card: '#fffdf9',
-  accent: '#6f8f72',
-  accentLight: '#edf3ec',
-  muted: '#7f786e',
-  border: '#ece6dc',
-  beige: '#f3eee5',
-  gold: '#b78b2e',
-  text: '#1f1f1c',
+const EVENT_TYPE = {
+  ufficiale: { label: '⚓ Ufficiale', bg: color.primarySoft,  fg: color.primaryDark },
+  vario:     { label: '🗺️ Vario',    bg: color.warningSoft,  fg: '#7a4f00'         },
 };
 
+function Skeleton({ w = '100%', h = '1rem', br = radius.sm }) {
+  return (
+    <div style={{
+      width: w, height: h, borderRadius: br,
+      background: `linear-gradient(90deg, ${color.bgSoft} 25%, ${color.primarySoft} 50%, ${color.bgSoft} 75%)`,
+      backgroundSize: '200% 100%',
+      animation: 'shimmer 1.4s ease-in-out infinite',
+    }} />
+  );
+}
+
 export default function Home({ currentMember, isCapitano }) {
-  const [currentBook, setCurrentBook] = useState(null);
-  const [upcomingEvents, setUpcomingEvents] = useState([]);
-  const [stats, setStats] = useState({ books: 0, members: 0, proposals: 0 });
-  const [loading, setLoading] = useState(true);
+  const [currentBook,     setCurrentBook]     = useState(null);
+  const [upcomingEvents,  setUpcomingEvents]   = useState([]);
+  const [stats,           setStats]            = useState({ books: 0, members: 0, proposals: 0 });
+  const [loading,         setLoading]          = useState(true);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  useEffect(() => { fetchAll(); }, []);
 
   async function fetchAll() {
     setLoading(true);
-    await Promise.all([
-      fetchCurrentBook(),
-      fetchEvents(),
-      fetchStats(),
-    ]);
+    await Promise.all([fetchCurrentBook(), fetchEvents(), fetchStats()]);
     setLoading(false);
   }
 
   async function fetchCurrentBook() {
     const { data } = await supabase
-      .from('books')
-      .select('*, authors(name, gender, nationality)')
-      .eq('status', 'active')
-      .maybeSingle();
-
+      .from('books').select('*, authors(name, gender, nationality)')
+      .eq('status', 'active').maybeSingle();
     setCurrentBook(data);
   }
 
   async function fetchEvents() {
     const today = new Date().toISOString().slice(0, 10);
-
-    const { data } = await supabase
-      .from('events')
-      .select('*')
-      .gte('date', today)
-      .order('date', { ascending: true })
-      .limit(4);
-
+    const { data } = await supabase.from('events').select('*')
+      .gte('date', today).order('date', { ascending: true }).limit(4);
     setUpcomingEvents(data || []);
   }
 
   async function fetchStats() {
     const [{ count: books }, { count: members }, { count: proposals }] = await Promise.all([
-      supabase
-        .from('books')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'completed'),
-
-      supabase
-        .from('members')
-        .select('*', { count: 'exact', head: true }),
-
-      supabase
-        .from('proposals')
-        .select('*', { count: 'exact', head: true }),
+      supabase.from('books').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+      supabase.from('members').select('*', { count: 'exact', head: true }),
+      supabase.from('proposals').select('*', { count: 'exact', head: true }),
     ]);
-
-    setStats({
-      books: books || 0,
-      members: members || 0,
-      proposals: proposals || 0,
-    });
-  }
-
-  if (loading) {
-    return (
-      <p style={{ padding: '3rem', color: palette.muted }}>
-        Caricamento...
-      </p>
-    );
+    setStats({ books: books || 0, members: members || 0, proposals: proposals || 0 });
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '2rem',
-        paddingBottom: '3rem',
-      }}
-    >
+    <>
+      <style>{`
+        @keyframes shimmer {
+          0%   { background-position: -200% 0; }
+          100% { background-position:  200% 0; }
+        }
+        .rr-grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: ${space[5]};
+        }
+        @media (max-width: 600px) {
+          .rr-grid-2 { grid-template-columns: 1fr; }
+        }
+        .rr-stat-num {
+          font-family: ${font.heading};
+          font-size: 2.2rem;
+          font-weight: 800;
+          color: ${color.primary};
+          line-height: 1;
+        }
+        .rr-event-row + .rr-event-row {
+          border-top: 1px solid ${color.border};
+          padding-top: ${space[3]};
+          margin-top: ${space[3]};
+        }
+      `}</style>
 
-      {/* HERO */}
-      <div
-        style={{
-          background: palette.card,
-          border: `1px solid ${palette.border}`,
-          borderRadius: '14px',
-          padding: '2.5rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.6rem',
-        }}
-      >
-        <div
-          style={{
-            color: palette.muted,
-            fontSize: '0.95rem',
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-          }}
-        >
-          Bentornato a bordo
+      <div style={{ display: 'flex', flexDirection: 'column', gap: space[5] }}>
+
+        {/* ── HERO ── */}
+        <div style={{
+          background: `linear-gradient(135deg, ${color.primary} 0%, #12997a 100%)`,
+          borderRadius: radius.lg,
+          padding: `${space[8]} ${space[6]}`,
+          color: '#fff',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ position: 'absolute', bottom: -20, right: 40, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+          <div style={{ fontSize: text.sm, opacity: 0.85, marginBottom: space[2], fontFamily: font.body, fontWeight: '500', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            Bentornato a bordo
+          </div>
+          <div style={{ ...heading.hero, color: '#fff', fontSize: 'clamp(1.8rem, 5vw, 2.4rem)' }}>
+            {isCapitano ? '⚓ Capitano' : `🏴‍☠️ ${currentMember?.name}`}
+          </div>
         </div>
 
-        <div
-          style={{
-            fontSize: '3rem',
-            lineHeight: '0.95',
-            color: palette.text,
-            fontFamily: 'Cormorant Garamond, serif',
-            fontWeight: '700',
-          }}
-        >
-          {isCapitano ? 'Capitano' : currentMember?.name}
-        </div>
-      </div>
-
-      {/* Libro del mese */}
-      <div
-        style={{
-          background: palette.card,
-          borderRadius: '14px',
-          padding: '2.5rem',
-          border: `1px solid ${palette.border}`,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1.2rem',
-        }}
-      >
-        <div
-          style={{
-            color: palette.accent,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            fontSize: '0.8rem',
-            fontWeight: '600',
-          }}
-        >
-          Libro del mese
-        </div>
-
-        {currentBook ? (
-          <>
-            <div
-              style={{
-                fontFamily: 'Cormorant Garamond, serif',
-                fontSize: '3.2rem',
-                lineHeight: '0.95',
-                color: palette.text,
-                fontWeight: '700',
-                maxWidth: '700px',
-              }}
-            >
-              {currentBook.title}
+        {/* ── LIBRO DEL MESE ── */}
+        <div style={{ background: color.surface, borderRadius: radius.md, boxShadow: shadow.sm, border: `1px solid ${color.border}`, padding: space[6] }}>
+          <div style={{ ...heading.section, marginBottom: space[4] }}>📖 Libro del mese</div>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: space[3] }}>
+              <Skeleton h="2rem" w="70%" /><Skeleton h="1rem" w="40%" /><Skeleton h="1.5rem" w="30%" />
             </div>
-
-            <div
-              style={{
-                fontSize: '1.05rem',
-                color: palette.muted,
-              }}
-            >
-              {currentBook.authors?.name}
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                gap: '0.6rem',
-                flexWrap: 'wrap',
-                marginTop: '0.4rem',
-              }}
-            >
-              {currentBook.genre && (
-                <span
-                  style={{
-                    background: palette.accentLight,
-                    color: palette.accent,
-                    borderRadius: '999px',
-                    padding: '0.25rem 0.8rem',
-                    fontSize: '0.72rem',
-                    fontWeight: '600',
-                  }}
-                >
-                  {currentBook.genre}
-                </span>
-              )}
-
-              {currentBook.authors?.nationality && (
-                <span
-                  style={{
-                    background: palette.beige,
-                    color: palette.muted,
-                    borderRadius: '999px',
-                    padding: '0.25rem 0.8rem',
-                    fontSize: '0.72rem',
-                  }}
-                >
-                  {currentBook.authors.nationality}
-                </span>
-              )}
-            </div>
-
-            {currentBook.selected_date && (
-              <div
-                style={{
-                  marginTop: '0.8rem',
-                  fontSize: '0.92rem',
-                  color: palette.muted,
-                }}
-              >
-                In lettura dal{' '}
-                {new Date(currentBook.selected_date).toLocaleDateString('it-IT')}
+          ) : currentBook ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: space[3] }}>
+              <div style={{ ...heading.xl, fontSize: 'clamp(1.4rem, 4vw, 1.9rem)', lineHeight: 1.2 }}>
+                {currentBook.title}
               </div>
-            )}
-          </>
-        ) : (
-          <div style={{ color: palette.muted }}>
-            Nessun libro attivo al momento.
-          </div>
-        )}
-      </div>
-
-      {/* Grid inferiore */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '1.5rem',
-        }}
-      >
-
-        {/* Eventi */}
-        <div
-          style={{
-            background: palette.card,
-            borderRadius: '12px',
-            padding: '2rem',
-            border: `1px solid ${palette.border}`,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: 'Cormorant Garamond, serif',
-              fontSize: '1.8rem',
-              marginBottom: '1.5rem',
-              color: palette.text,
-            }}
-          >
-            Prossimi incontri
-          </div>
-
-          {upcomingEvents.length === 0 ? (
-            <div style={{ color: palette.muted }}>
-              Nessun evento in programma.
+              <div style={{ fontFamily: font.body, fontSize: text.md, color: color.textSoft }}>
+                {currentBook.authors?.name}
+              </div>
+              <div style={{ display: 'flex', gap: space[2], flexWrap: 'wrap' }}>
+                {currentBook.genre && <span style={badge(color.primarySoft, color.primaryDark)}>{currentBook.genre}</span>}
+                {currentBook.authors?.nationality && <span style={badge(color.bgSoft, color.textSoft)}>{currentBook.authors.nationality}</span>}
+                {currentBook.publication_year && <span style={badge(color.bgSoft, color.textSoft)}>{currentBook.publication_year}</span>}
+              </div>
+              {currentBook.selected_date && (
+                <div style={{ fontSize: text.sm, color: color.muted, fontFamily: font.body }}>
+                  In lettura dal {new Date(currentBook.selected_date).toLocaleDateString('it-IT')}
+                </div>
+              )}
             </div>
           ) : (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-              }}
-            >
-              {upcomingEvents.map((e) => (
-                <div
-                  key={e.id}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.2rem',
-                    paddingBottom: '1rem',
-                    borderBottom: `1px solid ${palette.border}`,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '0.8rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      color: palette.muted,
-                    }}
-                  >
-                    {new Date(e.date).toLocaleDateString('it-IT', {
-                      day: 'numeric',
-                      month: 'long',
-                    })}
-                  </div>
-
-                  <div style={{ fontSize: '1rem', color: palette.text }}>
-                    {e.title}
-                  </div>
-                </div>
-              ))}
+            <div style={{ color: color.muted, fontStyle: 'italic', fontFamily: font.body, fontSize: text.md }}>
+              Nessun libro attivo al momento.
+              {isCapitano && ' Apri una votazione per sceglierne uno!'}
             </div>
           )}
         </div>
 
-        {/* Stats */}
-        <div
-          style={{
-            background: palette.card,
-            borderRadius: '12px',
-            padding: '2rem',
-            border: `1px solid ${palette.border}`,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: 'Cormorant Garamond, serif',
-              fontSize: '1.8rem',
-              marginBottom: '1.5rem',
-              color: palette.text,
-            }}
-          >
-            Il club
-          </div>
+        {/* ── GRID: EVENTI + STATS ── */}
+        <div className="rr-grid-2">
 
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.2rem',
-            }}
-          >
-            {[
-              { label: 'Libri letti', value: stats.books },
-              { label: 'Pirati a bordo', value: stats.members },
-              { label: 'Proposte in archivio', value: stats.proposals },
-            ].map((s) => (
-              <div
-                key={s.label}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'baseline',
-                }}
-              >
-                <div style={{ color: palette.muted }}>
-                  {s.label}
-                </div>
-
-                <div
-                  style={{
-                    fontSize: '2rem',
-                    color: palette.accent,
-                    fontFamily: 'Cormorant Garamond, serif',
-                    fontWeight: '700',
-                  }}
-                >
-                  {s.value}
-                </div>
+          {/* Prossimi incontri */}
+          <div style={{ background: color.surface, borderRadius: radius.md, boxShadow: shadow.sm, border: `1px solid ${color.border}`, padding: space[6] }}>
+            <div style={{ ...heading.section, marginBottom: space[4] }}>📅 Prossimi incontri</div>
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: space[3] }}>
+                {[1,2,3].map(i => <Skeleton key={i} h="2.5rem" />)}
               </div>
-            ))}
+            ) : upcomingEvents.length === 0 ? (
+              <div style={{ color: color.muted, fontSize: text.sm, fontFamily: font.body, fontStyle: 'italic' }}>
+                Nessun evento in programma.
+              </div>
+            ) : (
+              upcomingEvents.map((e, i) => {
+                const tipo = EVENT_TYPE[e.type] || EVENT_TYPE.ufficiale;
+                return (
+                  <div key={e.id} className={i > 0 ? 'rr-event-row' : ''} style={{ display: 'flex', gap: space[3], alignItems: 'flex-start' }}>
+                    {/* Data box */}
+                    <div style={{
+                      background:   tipo.bg,
+                      color:        tipo.fg,
+                      borderRadius: radius.sm,
+                      padding:      `${space[2]} ${space[3]}`,
+                      fontSize:     text.xs,
+                      fontWeight:   '700',
+                      fontFamily:   font.body,
+                      minWidth:     '54px',
+                      textAlign:    'center',
+                      lineHeight:   1.3,
+                      flexShrink:   0,
+                    }}>
+                      {new Date(e.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
+                    </div>
+
+                    {/* Titolo + badge tipo */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: space[1], flex: 1 }}>
+                      <div style={{ fontSize: text.sm, color: color.text, fontFamily: font.body, fontWeight: '600' }}>
+                        {e.title}
+                      </div>
+                      <span style={{
+                        ...badge(tipo.bg, tipo.fg),
+                        alignSelf: 'flex-start',
+                        fontSize: '0.65rem',
+                      }}>
+                        {tipo.label}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
+
+          {/* Il club in numeri */}
+          <div style={{ background: color.surface, borderRadius: radius.md, boxShadow: shadow.sm, border: `1px solid ${color.border}`, padding: space[6] }}>
+            <div style={{ ...heading.section, marginBottom: space[4] }}>📊 Il club</div>
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: space[4] }}>
+                {[1,2,3].map(i => <Skeleton key={i} h="2.5rem" />)}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: space[4] }}>
+                {[
+                  { label: 'Libri letti',         value: stats.books,     icon: '📚' },
+                  { label: 'Pirati a bordo',       value: stats.members,   icon: '🏴‍☠️' },
+                  { label: 'Proposte in archivio', value: stats.proposals, icon: '📋' },
+                ].map(s => (
+                  <div key={s.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: space[2] }}>
+                      <span style={{ fontSize: '1.1rem' }}>{s.icon}</span>
+                      <span style={{ color: color.textSoft, fontSize: text.sm, fontFamily: font.body }}>{s.label}</span>
+                    </div>
+                    <span className="rr-stat-num">{s.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
-    </div>
+    </>
   );
 }

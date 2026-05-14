@@ -1,20 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabase';
+import { color, font, text, space, radius, shadow, heading, btn, badge, input as inputStyle } from '../theme';
 
-const palette = {
-  bg: '#faf8f4',
-  card: '#ffffff',
-  accent: '#7a9e7e',
-  accentLight: '#e8f0e9',
-  muted: '#888',
-  border: '#e8e4de',
-  beige: '#f2ece2',
-};
-
-const GENRES = ['Romanzo', 'Saggio', 'Racconto', 'Poesia', 'Graphic novel', 'Altro'];
+const GENRES  = ['Romanzo', 'Saggio', 'Racconto', 'Poesia', 'Graphic novel', 'Altro'];
 const GENDERS = ['M', 'F', 'Non binario', 'Sconosciuto'];
 
-// Cerca su Open Library per titolo o ISBN
 async function searchOpenLibrary(query) {
   const isISBN = /^[\d-]{9,}$/.test(query.trim());
   let url;
@@ -24,75 +14,52 @@ async function searchOpenLibrary(query) {
   } else {
     url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=6&fields=title,author_name,publisher,first_publish_year,isbn,cover_i,key`;
   }
-  const res = await fetch(url);
+  const res  = await fetch(url);
   const data = await res.json();
-
   if (isISBN) {
-    const key = `ISBN:${query.replace(/-/g, '')}`;
+    const key  = `ISBN:${query.replace(/-/g, '')}`;
     const book = data[key];
     if (!book) return [];
-    return [{
-      title: book.title,
-      author: book.authors?.[0]?.name || '',
-      publisher: book.publishers?.[0]?.name || '',
-      year: book.publish_date ? parseInt(book.publish_date) : null,
-      isbn: query.replace(/-/g, ''),
-      cover_url: book.cover?.large || book.cover?.medium || null,
-    }];
+    return [{ title: book.title, author: book.authors?.[0]?.name || '', publisher: book.publishers?.[0]?.name || '', year: book.publish_date ? parseInt(book.publish_date) : null, isbn: query.replace(/-/g,''), cover_url: book.cover?.large || book.cover?.medium || null }];
   } else {
-    return (data.docs || []).map(d => ({
-      title: d.title,
-      author: d.author_name?.[0] || '',
-      publisher: d.publisher?.[0] || '',
-      year: d.first_publish_year || null,
-      isbn: d.isbn?.[0] || null,
-      cover_url: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
-    }));
+    return (data.docs || []).map(d => ({ title: d.title, author: d.author_name?.[0] || '', publisher: d.publisher?.[0] || '', year: d.first_publish_year || null, isbn: d.isbn?.[0] || null, cover_url: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null }));
   }
 }
 
 export default function Proposals({ isCapitano, currentMember, source }) {
-  const isLibrary = source === 'library';
-  const [proposals, setProposals] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
+  const isLibrary  = source === 'library';
+  const [proposals, setProposals]   = useState([]);
+  const [loading,   setLoading]     = useState(true);
+  const [error,     setError]       = useState(null);
+  const [showAdd,   setShowAdd]     = useState(false);
 
-  // Ricerca ISBN/titolo
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery,   setSearchQuery]   = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [bookSelected, setBookSelected] = useState(false);
+  const [searching,     setSearching]     = useState(false);
+  const [bookSelected,  setBookSelected]  = useState(false);
   const searchTimeout = useRef(null);
 
-  // Form
-  const emptyForm = {
-    title: '', publisher: '', publication_year: '', genre: 'Romanzo', isbn: '', cover_url: '',
-    author_name: '', author_gender: 'Sconosciuto', author_nationality: '', author_id: null,
-  };
-  const [form, setForm] = useState(emptyForm);
+  const emptyForm = { title:'', publisher:'', publication_year:'', genre:'Romanzo', isbn:'', cover_url:'', author_name:'', author_gender:'Sconosciuto', author_nationality:'', author_id:null };
+  const [form,              setForm]             = useState(emptyForm);
   const [authorSuggestions, setAuthorSuggestions] = useState([]);
-  const [authorLocked, setAuthorLocked] = useState(false);
+  const [authorLocked,      setAuthorLocked]      = useState(false);
   const f = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
-  useEffect(() => {
-    fetchProposals();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source]);
+  useEffect(() => { fetchProposals(); }, [source]);
 
   async function fetchProposals() {
     setLoading(true);
     const { data, error } = await supabase
       .from('proposals')
-      .select(`*, books(*, authors(name, gender, nationality)), members(name)`)
+      .select('id, source, proposed_by, books(id, title, genre, publisher, publication_year, isbn, cover_url, authors(name,gender,nationality)), members(name)')
       .eq('source', source)
       .order('created_at', { ascending: false });
     if (error) setError(error.message);
-    else setProposals(data);
+    else setProposals(data || []);
     setLoading(false);
   }
 
-  // Ricerca con debounce
   function handleSearchChange(val) {
     setSearchQuery(val);
     setBookSelected(false);
@@ -103,90 +70,53 @@ export default function Proposals({ isCapitano, currentMember, source }) {
       const results = await searchOpenLibrary(val);
       setSearchResults(results);
       setSearching(false);
-    }, 600);
+    }, 500);
   }
 
-  function selectFromSearch(book) {
-    setForm(prev => ({
-      ...prev,
-      title: book.title,
-      publisher: book.publisher || '',
-      publication_year: book.year || '',
-      isbn: book.isbn || '',
-      cover_url: book.cover_url || '',
-      author_name: book.author,
-      author_id: null,
-    }));
+  function selectFromSearch(r) {
+    setForm(prev => ({ ...prev, title: r.title, publisher: r.publisher || '', publication_year: r.year || '', isbn: r.isbn || '', cover_url: r.cover_url || '', author_name: r.author || '' }));
+    setSearchQuery(r.title);
     setSearchResults([]);
-    setSearchQuery(book.title);
     setBookSelected(true);
-    setAuthorLocked(false);
   }
 
-  function resetForm() {
-    setForm(emptyForm);
-    setSearchQuery('');
-    setSearchResults([]);
-    setBookSelected(false);
-    setAuthorLocked(false);
-  }
-
-  async function searchAuthors(query) {
-    if (query.length < 2) { setAuthorSuggestions([]); return; }
-    const { data } = await supabase.from('authors').select('id, name, gender, nationality').ilike('name', `%${query}%`).limit(5);
+  async function searchAuthors(name) {
+    if (name.length < 2) { setAuthorSuggestions([]); return; }
+    const { data } = await supabase.from('authors').select('id,name,gender,nationality').ilike('name', `%${name}%`).limit(5);
     setAuthorSuggestions(data || []);
   }
 
-  function selectAuthor(author) {
-    setForm(prev => ({ ...prev, author_name: author.name, author_gender: author.gender, author_nationality: author.nationality || '', author_id: author.id }));
+  function selectAuthor(a) {
+    setForm(prev => ({ ...prev, author_id: a.id, author_name: a.name, author_gender: a.gender || 'Sconosciuto', author_nationality: a.nationality || '' }));
     setAuthorSuggestions([]);
     setAuthorLocked(true);
   }
 
   function clearAuthor() {
-    setForm(prev => ({ ...prev, author_name: '', author_gender: 'Sconosciuto', author_nationality: '', author_id: null }));
+    setForm(prev => ({ ...prev, author_id: null, author_name: '', author_gender: 'Sconosciuto', author_nationality: '' }));
     setAuthorLocked(false);
+    setAuthorSuggestions([]);
   }
 
-  async function addProposal() {
+  function resetForm() {
+    setForm(emptyForm); setSearchQuery(''); setSearchResults([]);
+    setBookSelected(false); setAuthorSuggestions([]); setAuthorLocked(false);
+  }
+
+  async function submitProposal() {
     if (!form.title || !form.author_name) return;
     if (!isLibrary && !currentMember) return alert('Seleziona prima il tuo nome!');
-
     let authorId = form.author_id || null;
     if (!authorId) {
-      const { data: newAuthor, error: authorError } = await supabase
-        .from('authors')
-        .insert({ name: form.author_name.trim(), gender: form.author_gender, nationality: form.author_nationality || null })
-        .select('id').single();
-      if (authorError) { setError(authorError.message); return; }
+      const { data: newAuthor, error: aErr } = await supabase.from('authors').insert({ name: form.author_name.trim(), gender: form.author_gender, nationality: form.author_nationality || null }).select('id').single();
+      if (aErr) { setError(aErr.message); return; }
       authorId = newAuthor.id;
     }
-
-    const { data: newBook, error: bookError } = await supabase
-      .from('books')
-      .insert({
-        title: form.title.trim(),
-        author_id: authorId,
-        genre: form.genre,
-        publisher: form.publisher || null,
-        publication_year: form.publication_year ? parseInt(form.publication_year) : null,
-        isbn: form.isbn || null,
-        cover_url: form.cover_url || null,
-        status: 'backlog',
-      })
-      .select('id').single();
-    if (bookError) { setError(bookError.message); return; }
-
-    const { error: proposalError } = await supabase.from('proposals').insert({
-      book_id: newBook.id,
-      proposed_by: isLibrary ? null : currentMember.id,
-      source,
-    });
-    if (proposalError) { setError(proposalError.message); return; }
-
-    resetForm();
-    setShowAdd(false);
-    fetchProposals();
+    const { data: newBook, error: bErr } = await supabase.from('books').insert({ title: form.title.trim(), author_id: authorId, genre: form.genre, publisher: form.publisher || null, publication_year: form.publication_year ? parseInt(form.publication_year) : null, isbn: form.isbn || null, cover_url: form.cover_url || null, status: 'backlog' }).select('id').single();
+    if (bErr) { setError(bErr.message); return; }
+    const { error: pErr } = await supabase.from('proposals').insert({ book_id: newBook.id, proposed_by: isLibrary ? null : currentMember.id, source });
+    if (pErr) { setError(pErr.message); return; }
+    resetForm(); setShowAdd(false); fetchProposals();
   }
 
   async function removeProposal(proposalId, bookId) {
@@ -196,62 +126,86 @@ export default function Proposals({ isCapitano, currentMember, source }) {
     fetchProposals();
   }
 
+  async function promoteToLibrary(proposalId, bookId) {
+    if (!window.confirm('Spostare questo libro in libreria come completato?')) return;
+    await supabase.from('books').update({ status: 'completed', selected_date: new Date().toISOString().slice(0,10) }).eq('id', bookId);
+    await supabase.from('proposals').delete().eq('id', proposalId);
+    fetchProposals();
+  }
+
   const canAdd = isLibrary ? isCapitano : !!currentMember;
 
-  if (loading) return <p style={{ padding: '2rem', color: palette.muted }}>Caricamento proposte...</p>;
+  const Field = ({ label, children }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: space[1] }}>
+      {label && <label style={{ fontSize: text.xs, color: color.textSoft, fontFamily: font.body, fontWeight: '600' }}>{label}</label>}
+      {children}
+    </div>
+  );
+
+  const fieldStyle = { ...inputStyle, fontSize: text.sm, padding: `${space[2]} ${space[3]}` };
 
   return (
-    <div>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div style={{ color: palette.muted, fontSize: '0.9rem' }}>
-          {proposals.length} {proposals.length === 1 ? 'proposta' : 'proposte'}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: space[5] }}>
+      <style>{`
+        .rr-proposal-card:hover { box-shadow: 0 8px 28px rgba(18,43,38,0.11) !important; transform: translateY(-2px); }
+        .rr-proposal-card { transition: all 0.18s ease; }
+        .rr-search-row:hover { background: ${color.primarySoft} !important; }
+        .rr-search-row { transition: background 0.12s ease; }
+      `}</style>
+
+      {/* Header + bottone aggiungi */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ ...heading.section }}>
+          {isLibrary ? '🏛️ Proposte libreria' : '💬 Proposte pirati'}
+          <span style={{ ...badge(color.bgSoft, color.textSoft), marginLeft: space[3], fontSize: text.xs }}>{proposals.length}</span>
         </div>
-        {canAdd && (
-          <button onClick={() => { setShowAdd(!showAdd); resetForm(); }} style={{ background: palette.accent, color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1.1rem', cursor: 'pointer', fontSize: '0.85rem' }}>
-            {showAdd ? 'Annulla' : '+ Proponi libro'}
+        {canAdd ? (
+          <button onClick={() => { setShowAdd(!showAdd); resetForm(); }} style={{ ...btn.primary }}>
+            {showAdd ? 'Annulla' : '+ Proponi'}
           </button>
+        ) : (
+          <span style={{ fontSize: text.xs, color: color.muted, fontFamily: font.body }}>
+            {isLibrary ? 'Solo il Capitano può aggiungere' : 'Accedi per proporre'}
+          </span>
         )}
-        {!canAdd && !isLibrary && <span style={{ color: palette.muted, fontSize: '0.85rem' }}>Accedi per proporre un libro</span>}
-        {!canAdd && isLibrary && <span style={{ color: palette.muted, fontSize: '0.85rem' }}>Solo il Capitano può aggiungere proposte della libreria</span>}
       </div>
 
-      {error && <p style={{ color: 'red', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</p>}
+      {error && <div style={{ color: color.danger, fontSize: text.sm, fontFamily: font.body }}>{error}</div>}
 
-      {/* Form */}
+      {/* ── FORM AGGIUNGI ── */}
       {showAdd && (
-        <div style={{ background: palette.beige, border: `1px solid ${palette.border}`, borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ fontWeight: 'bold', color: palette.accent, marginBottom: '0.3rem', fontFamily: 'Georgia, serif' }}>📖 Proponi un libro</div>
-          <div style={{ fontSize: '0.8rem', color: palette.muted, marginBottom: '1rem' }}>
+        <div style={{ background: color.surface, borderRadius: radius.md, boxShadow: shadow.sm, border: `1px solid ${color.border}`, padding: space[6] }}>
+          <div style={{ ...heading.md, marginBottom: space[1] }}>📖 Proponi un libro</div>
+          <div style={{ fontSize: text.xs, color: color.muted, fontFamily: font.body, marginBottom: space[5] }}>
             {isCapitano ? '⚓ Andrà nelle proposte della libreria.' : '🏴‍☠️ Andrà nelle proposte dei pirati.'}
           </div>
 
           {/* Ricerca Open Library */}
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ fontSize: '0.8rem', color: palette.muted, display: 'block', marginBottom: '0.3rem' }}>🔍 Cerca per titolo o ISBN</label>
+          <Field label="🔍 Cerca per titolo o ISBN">
             <div style={{ position: 'relative' }}>
               <input
-                style={{ border: `1px solid ${palette.accent}`, borderRadius: '8px', padding: '0.6rem', background: '#fff', width: '100%', boxSizing: 'border-box', fontSize: '0.9rem' }}
-                placeholder="Es. 'Il nome della rosa' oppure '9788845292613'"
+                style={{ ...fieldStyle }}
+                placeholder="Es. 'Il nome della rosa' oppure ISBN"
                 value={searchQuery}
                 onChange={e => handleSearchChange(e.target.value)}
               />
-              {searching && <div style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: palette.muted, fontSize: '0.8rem' }}>⏳</div>}
+              {searching && (
+                <div style={{ position: 'absolute', right: space[3], top: '50%', transform: 'translateY(-50%)', color: color.muted, fontSize: text.xs }}>
+                  ⏳
+                </div>
+              )}
               {searchResults.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: `1px solid ${palette.border}`, borderRadius: '8px', zIndex: 20, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: '300px', overflowY: 'auto' }}>
+                <div style={{ position: 'absolute', top: '105%', left: 0, right: 0, background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.sm, zIndex: 20, boxShadow: shadow.md, maxHeight: '300px', overflowY: 'auto' }}>
                   {searchResults.map((r, i) => (
-                    <div key={i} onClick={() => selectFromSearch(r)}
-                      style={{ padding: '0.7rem 1rem', cursor: 'pointer', borderBottom: `1px solid ${palette.border}`, display: 'flex', gap: '0.8rem', alignItems: 'center' }}
-                      onMouseEnter={e => e.currentTarget.style.background = palette.accentLight}
-                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                    <div key={i} className="rr-search-row" onClick={() => selectFromSearch(r)}
+                      style={{ padding: `${space[3]} ${space[4]}`, cursor: 'pointer', borderBottom: `1px solid ${color.border}`, display: 'flex', gap: space[3], alignItems: 'center' }}>
                       {r.cover_url
-                        ? <img src={r.cover_url} alt="" style={{ width: 36, height: 52, objectFit: 'cover', borderRadius: '4px', flexShrink: 0 }} />
-                        : <div style={{ width: 36, height: 52, background: palette.beige, borderRadius: '4px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>📚</div>
+                        ? <img src={r.cover_url} alt="" style={{ width: 34, height: 50, objectFit: 'cover', borderRadius: radius.xs, flexShrink: 0 }} />
+                        : <div style={{ width: 34, height: 50, background: color.bgSoft, borderRadius: radius.xs, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>📚</div>
                       }
                       <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{r.title}</div>
-                        <div style={{ color: palette.muted, fontSize: '0.8rem' }}>{r.author} {r.year ? `· ${r.year}` : ''}</div>
-                        {r.publisher && <div style={{ color: palette.muted, fontSize: '0.75rem' }}>{r.publisher}</div>}
+                        <div style={{ fontWeight: '600', fontSize: text.sm, fontFamily: font.body, color: color.text }}>{r.title}</div>
+                        <div style={{ color: color.muted, fontSize: text.xs, fontFamily: font.body }}>{r.author}{r.year ? ` · ${r.year}` : ''}</div>
                       </div>
                     </div>
                   ))}
@@ -259,113 +213,148 @@ export default function Proposals({ isCapitano, currentMember, source }) {
               )}
             </div>
             {bookSelected && (
-              <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: palette.accent }}>
+              <div style={{ fontSize: text.xs, color: color.success, fontFamily: font.body, marginTop: space[1] }}>
                 ✅ Dati compilati da Open Library — puoi modificarli se necessario.
               </div>
             )}
-          </div>
+          </Field>
 
-          {/* Anteprima copertina */}
+          {/* Preview copertina */}
           {form.cover_url && (
-            <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <img src={form.cover_url} alt="Copertina" style={{ width: 60, height: 88, objectFit: 'cover', borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: space[4], margin: `${space[4]} 0`, padding: space[4], background: color.bgSoft, borderRadius: radius.sm }}>
+              <img src={form.cover_url} alt="Copertina" style={{ width: 52, height: 76, objectFit: 'cover', borderRadius: radius.xs, boxShadow: shadow.sm }} />
               <div>
-                <div style={{ fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>{form.title}</div>
-                <div style={{ color: palette.muted, fontSize: '0.85rem' }}>{form.author_name}</div>
+                <div style={{ fontFamily: font.heading, fontWeight: '700', fontSize: text.md, color: color.text }}>{form.title}</div>
+                <div style={{ color: color.textSoft, fontSize: text.sm, fontFamily: font.body }}>{form.author_name}</div>
               </div>
             </div>
           )}
 
           {/* Campi libro */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-            <input style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff', gridColumn: '1/-1' }} placeholder="Titolo *" value={form.title} onChange={e => f('title', e.target.value)} />
-            <input style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff' }} placeholder="Casa editrice" value={form.publisher} onChange={e => f('publisher', e.target.value)} />
-            <input style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff' }} placeholder="Anno pubblicazione" type="number" value={form.publication_year} onChange={e => f('publication_year', e.target.value)} />
-            <select style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff', gridColumn: '1/-1' }} value={form.genre} onChange={e => f('genre', e.target.value)}>
-              {GENRES.map(g => <option key={g}>{g}</option>)}
-            </select>
-            <input style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff', gridColumn: '1/-1' }} placeholder="ISBN" value={form.isbn} onChange={e => f('isbn', e.target.value)} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: space[3], marginTop: space[4] }}>
+            <div style={{ gridColumn: '1/-1' }}>
+              <Field label="Titolo *">
+                <input style={fieldStyle} placeholder="Titolo del libro" value={form.title} onChange={e => f('title', e.target.value)} />
+              </Field>
+            </div>
+            <Field label="Casa editrice">
+              <input style={fieldStyle} placeholder="Editore" value={form.publisher} onChange={e => f('publisher', e.target.value)} />
+            </Field>
+            <Field label="Anno">
+              <input style={fieldStyle} placeholder="2024" type="number" value={form.publication_year} onChange={e => f('publication_year', e.target.value)} />
+            </Field>
+            <div style={{ gridColumn: '1/-1' }}>
+              <Field label="Genere">
+                <select style={{ ...fieldStyle }} value={form.genre} onChange={e => f('genre', e.target.value)}>
+                  {GENRES.map(g => <option key={g}>{g}</option>)}
+                </select>
+              </Field>
+            </div>
+            <div style={{ gridColumn: '1/-1' }}>
+              <Field label="ISBN">
+                <input style={fieldStyle} placeholder="ISBN" value={form.isbn} onChange={e => f('isbn', e.target.value)} />
+              </Field>
+            </div>
           </div>
 
           {/* Autore */}
-          <div style={{ fontWeight: 'bold', color: palette.accent, margin: '1rem 0 0.5rem', fontFamily: 'Georgia, serif' }}>✍️ Autore/Autrice</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-            <div style={{ gridColumn: '1/-1', position: 'relative' }}>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                  style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: authorLocked ? palette.accentLight : '#fff', flex: 1 }}
-                  placeholder="Nome autore/autrice *"
-                  value={form.author_name}
-                  disabled={authorLocked}
-                  onChange={e => { f('author_name', e.target.value); searchAuthors(e.target.value); }}
-                />
-                {authorLocked && <button onClick={clearAuthor} style={{ background: 'transparent', border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem 0.8rem', cursor: 'pointer', color: palette.muted, fontSize: '0.85rem' }}>✕ Cambia</button>}
+          <div style={{ borderTop: `1px solid ${color.border}`, margin: `${space[5]} 0 ${space[4]}`, paddingTop: space[4] }}>
+            <div style={{ ...heading.md, marginBottom: space[3] }}>✍️ Autore/Autrice</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: space[3] }}>
+              <div style={{ gridColumn: '1/-1', position: 'relative' }}>
+                <Field label="Nome autore *">
+                  <div style={{ display: 'flex', gap: space[2] }}>
+                    <input style={{ ...fieldStyle, flex: 1, background: authorLocked ? color.primarySoft : color.surface }}
+                      placeholder="Nome autore/autrice" value={form.author_name} disabled={authorLocked}
+                      onChange={e => { f('author_name', e.target.value); searchAuthors(e.target.value); }} />
+                    {authorLocked && (
+                      <button onClick={clearAuthor} style={{ ...btn.ghost, padding: `${space[2]} ${space[3]}`, fontSize: text.xs }}>✕ Cambia</button>
+                    )}
+                  </div>
+                </Field>
+                {authorSuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.sm, zIndex: 10, boxShadow: shadow.md }}>
+                    {authorSuggestions.map(a => (
+                      <div key={a.id} onClick={() => selectAuthor(a)}
+                        style={{ padding: `${space[3]} ${space[4]}`, cursor: 'pointer', borderBottom: `1px solid ${color.border}`, fontSize: text.sm, fontFamily: font.body, color: color.text }}
+                        onMouseEnter={e => e.currentTarget.style.background = color.primarySoft}
+                        onMouseLeave={e => e.currentTarget.style.background = color.surface}>
+                        {a.name} {a.nationality ? `· ${a.nationality}` : ''}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              {authorSuggestions.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: `1px solid ${palette.border}`, borderRadius: '8px', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                  {authorSuggestions.map(a => (
-                    <div key={a.id} onClick={() => selectAuthor(a)}
-                      style={{ padding: '0.6rem 1rem', cursor: 'pointer', borderBottom: `1px solid ${palette.border}`, fontSize: '0.9rem' }}
-                      onMouseEnter={e => e.currentTarget.style.background = palette.accentLight}
-                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
-                      {a.name} <span style={{ color: palette.muted, fontSize: '0.8rem' }}>· {a.gender} · {a.nationality || '?'}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <Field label="Genere">
+                <select style={{ ...fieldStyle }} value={form.author_gender} onChange={e => f('author_gender', e.target.value)} disabled={authorLocked}>
+                  {GENDERS.map(g => <option key={g}>{g}</option>)}
+                </select>
+              </Field>
+              <Field label="Nazionalità">
+                <input style={{ ...fieldStyle, background: authorLocked ? color.primarySoft : color.surface }}
+                  placeholder="Es. Italiana" value={form.author_nationality}
+                  disabled={authorLocked} onChange={e => f('author_nationality', e.target.value)} />
+              </Field>
             </div>
-            {!authorLocked && (
-              <>
-                <div style={{ gridColumn: '1/-1' }}>
-                  <label style={{ fontSize: '0.8rem', color: palette.muted, display: 'block', marginBottom: '0.3rem' }}>Genere dell'autore/autrice</label>
-                  <select style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff', width: '100%' }} value={form.author_gender} onChange={e => f('author_gender', e.target.value)}>
-                    {GENDERS.map(g => <option key={g}>{g}</option>)}
-                  </select>
-                </div>
-                <input style={{ border: `1px solid ${palette.border}`, borderRadius: '8px', padding: '0.5rem', background: '#fff', gridColumn: '1/-1' }} placeholder="Nazionalità" value={form.author_nationality} onChange={e => f('author_nationality', e.target.value)} />
-              </>
-            )}
           </div>
-          <button onClick={addProposal} style={{ marginTop: '1rem', background: palette.accent, color: '#fff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
-            Salva proposta
-          </button>
+
+          {/* Submit */}
+          <div style={{ display: 'flex', gap: space[3], justifyContent: 'flex-end', borderTop: `1px solid ${color.border}`, paddingTop: space[4] }}>
+            <button onClick={() => { setShowAdd(false); resetForm(); }} style={{ ...btn.ghost }}>Annulla</button>
+            <button onClick={submitProposal} style={{ ...btn.primary }}
+              disabled={!form.title || !form.author_name}>
+              Aggiungi proposta
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Lista proposte */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
-        {proposals.length === 0 && <p style={{ color: palette.muted }}>Nessuna proposta ancora.</p>}
-        {proposals.map(p => {
-          const book = p.books;
-          return (
-            <div key={p.id} style={{ background: palette.card, border: `1px solid ${palette.border}`, borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              {/* Copertina */}
-              <div style={{ background: palette.beige, height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                {book?.cover_url
-                  ? <img src={book.cover_url} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span style={{ fontSize: '3rem' }}>📚</span>
-                }
-              </div>
-              {/* Info */}
-              <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1 }}>
-                <div style={{ fontWeight: 'bold', fontFamily: 'Georgia, serif', fontSize: '0.95rem' }}>{book?.title}</div>
-                <div style={{ color: palette.muted, fontSize: '0.82rem' }}>{book?.authors?.name}</div>
-                <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
-                  {book?.genre && <span style={{ background: palette.accentLight, color: palette.accent, borderRadius: '20px', padding: '0.1rem 0.5rem', fontSize: '0.7rem' }}>{book.genre}</span>}
-                  {book?.authors?.gender && <span style={{ background: palette.beige, borderRadius: '20px', padding: '0.1rem 0.5rem', fontSize: '0.7rem', color: palette.muted }}>{book.authors.gender}</span>}
+      {/* ── LISTA PROPOSTE ── */}
+      {loading ? (
+        <div style={{ color: color.muted, fontSize: text.sm, fontFamily: font.body, padding: space[4] }}>Caricamento proposte...</div>
+      ) : proposals.length === 0 ? (
+        <div style={{ background: color.surface, borderRadius: radius.md, boxShadow: shadow.sm, border: `1px solid ${color.border}`, padding: `${space[10]} ${space[6]}`, textAlign: 'center' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: space[3] }}>📋</div>
+          <div style={{ color: color.muted, fontFamily: font.body, fontSize: text.md }}>Nessuna proposta ancora.</div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: space[4] }}>
+          {proposals.map(p => {
+            const book = p.books;
+            if (!book) return null;
+            return (
+              <div key={p.id} className="rr-proposal-card" style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.md, boxShadow: shadow.xs, padding: space[5], display: 'flex', flexDirection: 'column', gap: space[3] }}>
+                {book.cover_url && (
+                  <img src={book.cover_url} alt={book.title} style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: radius.sm }} loading="lazy" />
+                )}
+                <div>
+                  <div style={{ fontFamily: font.heading, fontWeight: '700', fontSize: text.lg, color: color.text, lineHeight: 1.3, marginBottom: space[1] }}>{book.title}</div>
+                  <div style={{ color: color.textSoft, fontSize: text.sm, fontFamily: font.body }}>{book.authors?.name}{book.publication_year ? ` · ${book.publication_year}` : ''}</div>
                 </div>
-                {!isLibrary && p.members && <div style={{ fontSize: '0.78rem', color: palette.muted, marginTop: '0.3rem' }}>🏴‍☠️ {p.members.name}</div>}
-                <div style={{ fontSize: '0.75rem', color: palette.muted }}>{new Date(p.created_at).toLocaleDateString('it-IT')}</div>
+                <div style={{ display: 'flex', gap: space[2], flexWrap: 'wrap' }}>
+                  {book.genre && <span style={badge(color.primarySoft, color.primaryDark)}>{book.genre}</span>}
+                  {book.authors?.nationality && <span style={badge(color.bgSoft, color.textSoft)}>{book.authors.nationality}</span>}
+                </div>
+                {!isLibrary && p.members?.name && (
+                  <div style={{ fontSize: text.xs, color: color.muted, fontFamily: font.body }}>
+                    Proposto da <strong style={{ color: color.textSoft }}>{p.members.name}</strong>
+                  </div>
+                )}
                 {isCapitano && (
-                  <button onClick={() => removeProposal(p.id, book?.id)} style={{ marginTop: '0.5rem', background: 'transparent', border: `1px solid #e07070`, color: '#e07070', borderRadius: '8px', padding: '0.3rem 0.7rem', cursor: 'pointer', fontSize: '0.75rem', alignSelf: 'flex-end' }}>
-                    Rimuovi
-                  </button>
+                  <div style={{ display: 'flex', gap: space[2], borderTop: `1px solid ${color.border}`, paddingTop: space[3] }}>
+                    <button onClick={() => promoteToLibrary(p.id, book.id)} style={{ ...btn.primary, fontSize: text.xs, padding: `${space[2]} ${space[3]}`, flex: 1 }}>
+                      ✅ Sposta in libreria
+                    </button>
+                    <button onClick={() => removeProposal(p.id, book.id)} style={{ ...btn.danger, fontSize: text.xs, padding: `${space[2]} ${space[3]}` }}>
+                      Rimuovi
+                    </button>
+                  </div>
                 )}
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

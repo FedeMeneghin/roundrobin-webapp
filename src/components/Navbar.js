@@ -1,105 +1,188 @@
 import React, { useState } from 'react';
-import { t, btn } from '../theme';
+import { color, font, text, space, radius, btn } from '../theme';
 
 const tabs = [
-  { id: 'home',     label: 'Home',              icon: '🏠' },
-  { id: 'library',  label: 'Libreria',           icon: '📚' },
-  { id: 'libsugg',  label: 'Proposte libreria',  icon: '🏛️' },
-  { id: 'usersugg', label: 'Proposte pirati',    icon: '💬' },
-  { id: 'voting',   label: 'Votazione',          icon: '🗳️' },
-  { id: 'members',  label: 'Pirati',             icon: '👥' },
-  { id: 'calendar', label: 'Calendario',         icon: '📅' },
+  { id: 'home',     label: 'Home',          icon: '🏠' },
+  { id: 'calendar', label: 'Calendario',    icon: '📅' },
+  { id: 'library',  label: 'Libreria',      icon: '📚' },
+  { id: 'libsugg',  label: 'Prop. libreria',icon: '🏛️' },
+  { id: 'usersugg', label: 'Prop. pirati',  icon: '💬' },
+  { id: 'voting',   label: 'Votazione',     icon: '🗳️' },
+  { id: 'members',  label: 'Pirati',        icon: '👥' },
 ];
 
 export default function Navbar({ activeTab, setActiveTab, isCapitano, currentMember, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav style={{ background: t.bg, borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 1px 8px rgba(0,0,0,0.05)' }}>
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 1.2rem' }}>
+    <>
+      <style>{`
+        .rr-nav {
+          background: ${color.surface};
+          border-bottom: 1px solid ${color.border};
+          position: sticky;
+          top: 0;
+          z-index: 100;
+          box-shadow: 0 1px 8px rgba(18,43,38,0.06);
+        }
+        .rr-nav-inner {
+          max-width: 960px;
+          margin: 0 auto;
+          padding: 0 ${space[5]};
+        }
+        .rr-topbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          height: 56px;
+        }
+        .rr-logo {
+          font-family: ${font.heading};
+          font-weight: 800;
+          font-size: ${text.lg};
+          color: ${color.primary};
+          letter-spacing: -0.01em;
+          display: flex;
+          align-items: center;
+          gap: ${space[2]};
+          flex-shrink: 0;
+        }
+        .rr-user {
+          display: flex;
+          align-items: center;
+          gap: ${space[3]};
+          flex-shrink: 0;
+        }
+        .rr-username {
+          color: ${color.textSoft};
+          font-size: ${text.sm};
+          font-family: ${font.body};
+          font-weight: 600;
+          white-space: nowrap;
+          max-width: 120px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .rr-cap-badge {
+          background: ${color.primarySoft};
+          color: ${color.primaryDark};
+          border-radius: ${radius.pill};
+          padding: 0.2rem 0.7rem;
+          font-size: ${text.xs};
+          font-weight: 700;
+          font-family: ${font.body};
+          flex-shrink: 0;
+        }
+        .rr-hamburger {
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: 1.3rem;
+          color: ${color.textSoft};
+          display: none;
+          padding: ${space[2]};
+          border-radius: ${radius.sm};
+        }
 
-        {/* Top bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '60px' }}>
-          {/* Logo */}
-          <div style={{ fontFamily: t.fontSerif, fontWeight: 'bold', fontSize: '1.25rem', color: t.accent, letterSpacing: '-0.01em' }}>
-            Round Robin
-          </div>
+        /* Tab bar */
+        .rr-tabs {
+          display: flex;
+          flex-direction: row;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          gap: 0;
+          border-top: 1px solid ${color.border};
+        }
+        .rr-tabs::-webkit-scrollbar { display: none; }
 
-          {/* Desktop: utente + logout */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-            {isCapitano && (
-              <span style={{ background: t.accent, color: '#fff', borderRadius: t.radiusPill, padding: '0.2rem 0.9rem', fontSize: '0.78rem', fontWeight: '600' }}>
-                Capitano
-              </span>
-            )}
-<span style={{ color: t.textSoft, fontSize: '0.88rem' }}>
-  {currentMember?.name}
-</span>
-            <button onClick={onLogout} style={{ ...btn.ghost, padding: '0.35rem 0.9rem', fontSize: '0.82rem' }}>
-              Esci
-            </button>
-            {/* Hamburger mobile */}
-            <button onClick={() => setMenuOpen(!menuOpen)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.4rem', color: t.textSoft, display: 'flex', alignItems: 'center', marginLeft: '0.2rem' }}>
-              {menuOpen ? '✕' : '☰'}
-            </button>
-          </div>
-        </div>
+        .rr-tab {
+          display: flex;
+          align-items: center;
+          gap: ${space[1]};
+          padding: ${space[3]} ${space[4]};
+          border: none;
+          border-bottom: 2.5px solid transparent;
+          background: transparent;
+          cursor: pointer;
+          font-size: ${text.sm};
+          font-family: ${font.body};
+          font-weight: 500;
+          color: ${color.textSoft};
+          white-space: nowrap;
+          flex-shrink: 0;
+          transition: color 0.15s ease, border-color 0.15s ease;
+        }
+        .rr-tab:hover { color: ${color.text}; }
+        .rr-tab.active {
+          color: ${color.primary};
+          font-weight: 700;
+          border-bottom-color: ${color.primary};
+        }
 
-        {/* Tab bar — desktop orizzontale, mobile dropdown */}
-        <div style={{
-          display: menuOpen ? 'flex' : 'none',
-          flexDirection: 'column',
-          paddingBottom: '0.8rem',
-          gap: '0.2rem',
-          // su schermi larghi mostra sempre orizzontale
-        }}
-          className="nav-tabs-mobile"
-        >
-          {tabs.map(tab => (
-            <button key={tab.id}
-              onClick={() => { setActiveTab(tab.id); setMenuOpen(false); }}
-              style={{
-                background: activeTab === tab.id ? t.accentLight : 'transparent',
-                color: activeTab === tab.id ? t.accent : t.textSoft,
-                border: 'none',
-                borderRadius: t.radiusSm,
-                padding: '0.7rem 1rem',
-                cursor: 'pointer',
-                fontSize: '0.92rem',
-                fontWeight: activeTab === tab.id ? '600' : '400',
-                textAlign: 'left',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.6rem',
-              }}>
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-              {activeTab === tab.id && <span style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: t.accent }} />}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab bar desktop — sempre visibile su schermi larghi */}
-        <style>{`
-          @media (min-width: 640px) {
-            .nav-tabs-mobile {
-              display: flex !important;
-              flex-direction: row !important;
-              padding-bottom: 0 !important;
-              gap: 0 !important;
-              overflow-x: auto;
-            }
-            .nav-tabs-mobile button {
-              padding: 0.5rem 0.9rem !important;
-              border-radius: 0 !important;
-              border-bottom: 2.5px solid transparent !important;
-              font-size: 0.85rem !important;
-            }
+        /* Mobile: hamburger + dropdown */
+        @media (max-width: 639px) {
+          .rr-hamburger { display: flex; }
+          .rr-username  { display: none; }
+          .rr-tabs {
+            display: ${`var(--menu-open, none)`};
+            flex-direction: column;
+            border-top: 1px solid ${color.border};
+            padding-bottom: ${space[3]};
           }
-        `}</style>
+          .rr-tabs.open { display: flex; }
+          .rr-tab {
+            border-bottom: none;
+            border-left: 3px solid transparent;
+            padding: ${space[3]} ${space[5]};
+            font-size: ${text.md};
+            justify-content: flex-start;
+            width: 100%;
+          }
+          .rr-tab.active {
+            border-left-color: ${color.primary};
+            border-bottom-color: transparent;
+            background: ${color.primarySoft};
+          }
+        }
+      `}</style>
 
-      </div>
-    </nav>
+      <nav className="rr-nav">
+        <div className="rr-nav-inner">
+
+          {/* Top bar */}
+          <div className="rr-topbar">
+            <div className="rr-logo">
+              🏴‍☠️ Round Robin
+            </div>
+            <div className="rr-user">
+              {isCapitano && <span className="rr-cap-badge">⚓ Capitano</span>}
+              <span className="rr-username">{currentMember?.name}</span>
+              <button onClick={onLogout} style={{ ...btn.ghost, padding: `${space[2]} ${space[4]}`, fontSize: text.xs }}>
+                Esci
+              </button>
+              <button className="rr-hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
+                {menuOpen ? '✕' : '☰'}
+              </button>
+            </div>
+          </div>
+
+          {/* Tab bar */}
+          <div className={`rr-tabs${menuOpen ? ' open' : ''}`}>
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                className={`rr-tab${activeTab === tab.id ? ' active' : ''}`}
+                onClick={() => { setActiveTab(tab.id); setMenuOpen(false); }}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
+        </div>
+      </nav>
+    </>
   );
 }
