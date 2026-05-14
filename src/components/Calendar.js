@@ -51,6 +51,14 @@ function downloadICS(event) {
   URL.revokeObjectURL(url);
 }
 
+function Field({ label, children }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: space[1] }}>
+      <label style={{ fontSize: text.xs, color: color.textSoft, fontFamily: font.body, fontWeight: '600' }}>{label}</label>
+      {children}
+    </div>
+  );
+}
 export default function Calendar({ isCapitano }) {
   const [events,    setEvents]    = useState([]);
   const [loading,   setLoading]   = useState(true);
@@ -204,12 +212,6 @@ export default function Calendar({ isCapitano }) {
   }
 
   // ── Form field helpers ─────────────────────────────────────
-  const Field = ({ label, children }) => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: space[1] }}>
-      <label style={{ fontSize: text.xs, color: color.textSoft, fontFamily: font.body, fontWeight: '600' }}>{label}</label>
-      {children}
-    </div>
-  );
   const fieldStyle = { ...inputStyle, fontSize: text.sm, padding: `${space[2]} ${space[3]}` };
 
   return (

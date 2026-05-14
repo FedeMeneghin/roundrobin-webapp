@@ -83,6 +83,15 @@ async function searchOpenLibrary(query) {
 // COMPONENTE FORM — isolato per evitare re-render che tolgono
 // il focus all'input durante la ricerca
 // ══════════════════════════════════════════════════════════════
+function Field({ label, children }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: space[1] }}>
+      {label && <label style={{ fontSize: text.xs, color: color.textSoft, fontFamily: font.body, fontWeight: '600' }}>{label}</label>}
+      {children}
+    </div>
+  );
+}
+
 function ProposalForm({ isCapitano, currentMember, isLibrary, source, onSubmitted, onCancel }) {
   const emptyForm = {
     title: '', publisher: '', publication_year: '', genre: 'Romanzo',
@@ -202,12 +211,6 @@ function ProposalForm({ isCapitano, currentMember, isLibrary, source, onSubmitte
     onSubmitted();
   }
 
-  const Field = ({ label, children }) => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: space[1] }}>
-      {label && <label style={{ fontSize: text.xs, color: color.textSoft, fontFamily: font.body, fontWeight: '600' }}>{label}</label>}
-      {children}
-    </div>
-  );
   const fs = { ...inputStyle, fontSize: text.sm, padding: `${space[2]} ${space[3]}` };
 
   return (
