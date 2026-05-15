@@ -1,5 +1,5 @@
 import React from 'react';
-import { color, font, text, space, radius, shadow, btn, badge } from '../../theme';
+import { color, font, text, space, radius, shadow, btn } from '../../theme';
 import Badge from '../../ui/Badge';
 
 /**

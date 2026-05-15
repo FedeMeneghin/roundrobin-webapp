@@ -18,7 +18,6 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
   const [searchQuery,       setSearchQuery]       = useState('');
   const [searchResults,     setSearchResults]     = useState([]);
   const [searching,         setSearching]         = useState(false);
-  const [bookSelected,      setBookSelected]      = useState(false);
   const [authorSuggestions, setAuthorSuggestions] = useState([]);
   const [authorLocked,      setAuthorLocked]      = useState(false);
   const [error,             setError]             = useState(null);
@@ -30,7 +29,6 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
 
   function handleSearchChange(val) {
     setSearchQuery(val);
-    setBookSelected(false);
     clearTimeout(searchTimeout.current);
     if (val.length < 3) { setSearchResults([]); return; }
     searchTimeout.current = setTimeout(async () => {
@@ -53,7 +51,6 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
     }));
     setSearchQuery(r.title);
     setSearchResults([]);
-    setBookSelected(true);
   }
 
   function handleAuthorChange(val) {

@@ -8,7 +8,7 @@ import ProposalCard from './ProposalCard';
 export default function Proposals({ isCapitano, currentMember, source }) {
   const isLibrary = source === 'library';
   const { data: proposals, loading, error: fetchError, refetch } = useProposals(source);
-  const [error,   setError]   = useState(null);
+  const [error]   = useState(null);
   const [showAdd, setShowAdd] = useState(false);
 
   async function removeProposal(proposalId, bookId) {
