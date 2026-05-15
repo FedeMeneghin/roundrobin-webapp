@@ -1,20 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Login from './components/Login';
 import Navbar from './components/Navbar';
 import Members from './components/Members';
 import Library from './components/Library/Library';
 import Proposals from './components/Proposals/Proposals';
-import Calendar from './components/Calendar/Calendar';
 import Home from './components/Home';
-
+import Calendar from './components/Calendar/Calendar';
 import { t } from './theme';
 
 const CAPITANO_PASSWORD = 'kraken123';
+const STORAGE_KEY = 'rr_session';
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+
+function saveSession(member, isCapitano) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ member, isCapitano }));
+  } catch (_) {}
+}
+
+function clearSession() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+}
 
 export default function App() {
-  const [currentMember, setCurrentMember] = useState(null); // oggetto membro o 'capitano'
-  const [isCapitano, setIsCapitano] = useState(false);
-  const [activeTab, setActiveTab] = useState('home');
+  const saved = loadSession();
+  const [currentMember, setCurrentMember] = useState(saved?.member     || null);
+  const [isCapitano,    setIsCapitano]    = useState(saved?.isCapitano  || false);
+  const [activeTab,     setActiveTab]     = useState('home');
+
+  // Aggiorna localStorage ogni volta che cambia la sessione
+  useEffect(() => {
+    if (currentMember) saveSession(currentMember, isCapitano);
+    else clearSession();
+  }, [currentMember, isCapitano]);
 
   function handleLogin(member) {
     if (member === 'capitano') {
@@ -37,7 +61,6 @@ export default function App() {
     setActiveTab('home');
   }
 
-  // Mostra login se non autenticato
   if (!currentMember) {
     return <Login onLogin={handleLogin} />;
   }
@@ -62,7 +85,7 @@ export default function App() {
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏴‍☠️</div>
             <div>Sezione in costruzione...</div>
           </div>
-      );
+        );
     }
   }
 
