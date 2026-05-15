@@ -5,8 +5,8 @@ import { useBooks } from '../../hooks/useSupabase';
 import BookCard from './BookCard';
 
 const FILTERS = [
-  { id: 'completed', label: '📚 Letti'      },
   { id: 'active',    label: '📖 In lettura' },
+  { id: 'completed', label: '📚 Letti'      },
 ];
 
 export default function Library({ isCapitano, currentMember }) {
