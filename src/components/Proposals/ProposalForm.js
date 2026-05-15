@@ -7,10 +7,24 @@ import Field from '../../ui/Field';
 const GENRES  = ['Romanzo', 'Saggio', 'Racconto', 'Poesia', 'Graphic novel', 'Altro'];
 const GENDERS = ['M', 'F', 'Non binario', 'Sconosciuto'];
 
+const NATIONALITIES = [
+  'Afghanistan', 'Albania', 'Algeria', 'Argentina', 'Australia', 'Austria',
+  'Belgio', 'Brasile', 'Regno Unito', 'Canada', 'Cile', 'Cina',
+  'Colombia', 'Croazia', 'Cuba', 'Danimarca', 'Egitto', 'Etiopia',
+  'Finlandia', 'Francia', 'Georgia', 'Germania', 'Ghana', 'Grecia',
+  'Ungheria', 'India', 'Iran', 'Iraq', 'Irlanda', 'Israele',
+  'Italia', 'Giappone', 'Kenya', 'Libano', 'Messico', 'Marocco',
+  'Paesi Bassi', 'Nuova Zelanda', 'Nigeria', 'Norvegia', 'Pakistan',
+  'Perù', 'Polonia', 'Portogallo', 'Romania', 'Russia', 'Arabia Saudita',
+  'Senegal', 'Serbia', 'Sudafrica', 'Corea del Sud', 'Spagna', 'Svezia',
+  'Svizzera', 'Siria', 'Taiwan', 'Turchia', 'Ucraina', 'Stati Uniti',
+  'Uruguay', 'Venezuela', 'Vietnam', 'Zimbabwe', 'Sconosciuta',
+];
+
 const EMPTY_FORM = {
   title: '', publisher: '', publication_year: '', genre: 'Romanzo',
   isbn: '', cover_url: '', author_name: '', author_gender: 'Sconosciuto',
-  author_nationality: '', author_id: null,
+  author_nationality: 'Sconosciuta', author_id: null,
 };
 
 export default function ProposalForm({ isCapitano, currentMember, isLibrary, source, onSubmitted, onCancel }) {
@@ -71,14 +85,14 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
       author_id:          a.id,
       author_name:        a.name,
       author_gender:      a.gender      || 'Sconosciuto',
-      author_nationality: a.nationality || '',
+      author_nationality: a.nationality || 'Sconosciuta',
     }));
     setAuthorSuggestions([]);
     setAuthorLocked(true);
   }
 
   function clearAuthor() {
-    setForm(prev => ({ ...prev, author_id: null, author_name: '', author_gender: 'Sconosciuto', author_nationality: '' }));
+    setForm(prev => ({ ...prev, author_id: null, author_name: '', author_gender: 'Sconosciuto', author_nationality: 'Sconosciuta' }));
     setAuthorLocked(false);
     setAuthorSuggestions([]);
   }
@@ -91,7 +105,11 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
     if (!authorId) {
       const { data: newAuthor, error: aErr } = await supabase
         .from('authors')
-        .insert({ name: form.author_name.trim(), gender: form.author_gender, nationality: form.author_nationality || null })
+        .insert({
+          name:        form.author_name.trim(),
+          gender:      form.author_gender,
+          nationality: form.author_nationality !== 'Sconosciuta' ? form.author_nationality : null,
+        })
         .select('id').single();
       if (aErr) { setError(aErr.message); return; }
       authorId = newAuthor.id;
@@ -131,72 +149,91 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
 
       {error && <div style={{ color: color.danger, fontSize: text.sm, marginBottom: space[3] }}>{error}</div>}
 
-      {/* Book search */}
-      <Field label="🔍 Cerca per titolo o ISBN">
-        <div style={{ position: 'relative' }}>
-          <input
-            style={fs}
-            placeholder="Es. 'Il nome della rosa' oppure ISBN"
-            value={searchQuery}
-            onChange={e => handleSearchChange(e.target.value)}
-            autoComplete="off"
-          />
-          {searching && (
-            <div style={{ position: 'absolute', right: space[3], top: '50%', transform: 'translateY(-50%)', fontSize: text.xs, color: color.muted }}>⏳</div>
-          )}
-          {searchResults.length > 0 && (
-            <div style={{ position: 'absolute', top: '105%', left: 0, right: 0, background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.sm, zIndex: 20, boxShadow: shadow.md, maxHeight: '300px', overflowY: 'auto' }}>
-              {searchResults.map((r, i) => (
-                <div
-                  key={i}
-                  onMouseDown={e => { e.preventDefault(); selectFromSearch(r); }}
-                  style={{ padding: `${space[3]} ${space[4]}`, display: 'flex', gap: space[3], alignItems: 'center', cursor: 'pointer', borderBottom: `1px solid ${color.border}` }}
-                  onMouseEnter={e => e.currentTarget.style.background = color.bgSoft}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  {r.cover_url && <img src={r.cover_url} alt="" style={{ width: '32px', height: '44px', objectFit: 'cover', borderRadius: radius.xs }} loading="lazy" />}
-                  <div>
-                    <div style={{ fontWeight: '600', fontSize: text.sm, color: color.text, fontFamily: font.body }}>{r.title}</div>
-                    <div style={{ fontSize: text.xs, color: color.muted, fontFamily: font.body }}>{r.author}{r.year ? ` · ${r.year}` : ''}</div>
-                  </div>
-                </div>
-              ))}
+{/* Book search */}
+<Field label="🔍 Cerca per titolo o ISBN">
+  <div style={{ position: 'relative' }}>
+    <input
+      style={fs}
+      placeholder="Es. 'Il nome della rosa' oppure ISBN"
+      value={searchQuery}
+      onChange={e => handleSearchChange(e.target.value)}
+      autoComplete="off"
+    />
+    {searching && (
+      <div style={{ position: 'absolute', right: space[3], top: '50%', transform: 'translateY(-50%)', fontSize: text.xs, color: color.muted }}>⏳</div>
+    )}
+    {searchResults.length > 0 && (
+      <div style={{ position: 'absolute', top: '105%', left: 0, right: 0, background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.sm, zIndex: 20, boxShadow: shadow.md, maxHeight: '300px', overflowY: 'auto' }}>
+        {searchResults.map((r, i) => (
+          <div
+            key={i}
+            onMouseDown={e => { e.preventDefault(); selectFromSearch(r); }}
+            style={{ padding: `${space[3]} ${space[4]}`, display: 'flex', gap: space[3], alignItems: 'center', cursor: 'pointer', borderBottom: `1px solid ${color.border}` }}
+            onMouseEnter={e => e.currentTarget.style.background = color.bgSoft}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            {r.cover_url && <img src={r.cover_url} alt="" style={{ width: '32px', height: '44px', objectFit: 'cover', borderRadius: radius.xs }} loading="lazy" />}
+            <div>
+              <div style={{ fontWeight: '600', fontSize: text.sm, color: color.text, fontFamily: font.body }}>{r.title}</div>
+              <div style={{ fontSize: text.xs, color: color.muted, fontFamily: font.body }}>{r.author}{r.year ? ` · ${r.year}` : ''}</div>
             </div>
-          )}
-        </div>
-      </Field>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</Field>
+
+{/* Messaggio "non trovato" */}
+{!searching && searchQuery.length >= 3 && searchResults.length === 0 && (
+  <div style={{
+    fontSize: text.xs, color: color.muted, fontFamily: font.body,
+    background: color.bgSoft, borderRadius: radius.sm,
+    padding: `${space[3]} ${space[4]}`,
+    display: 'flex', flexDirection: 'column', gap: space[2],
+  }}>
+    <span>📭 Nessun risultato trovato per <em>"{searchQuery}"</em>.</span>
+    <span>
+      Prova con l'<strong>ISBN</strong> (lo trovi sul retro del libro) oppure{' '}
+      <a
+        href={`https://openlibrary.org/search?q=${encodeURIComponent(searchQuery)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: color.primary, textDecoration: 'underline' }}
+      >
+        cerca su OpenLibrary
+      </a>
+      {' '}e compila i campi manualmente.
+    </span>
+  </div>
+)}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: space[4], marginTop: space[4] }}>
-        {/* Title */}
+
         <div style={{ gridColumn: '1/-1' }}>
           <Field label="Titolo *">
             <input style={fs} placeholder="Titolo del libro" value={form.title} onChange={e => f('title', e.target.value)} />
           </Field>
         </div>
 
-        {/* Genre */}
         <Field label="Genere">
           <select style={fs} value={form.genre} onChange={e => f('genre', e.target.value)}>
             {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
         </Field>
 
-        {/* Year */}
         <Field label="Anno">
           <input style={fs} type="number" placeholder="Es. 1980" value={form.publication_year} onChange={e => f('publication_year', e.target.value)} />
         </Field>
 
-        {/* Publisher */}
         <Field label="Editore">
           <input style={fs} placeholder="Es. Einaudi" value={form.publisher} onChange={e => f('publisher', e.target.value)} />
         </Field>
 
-        {/* ISBN */}
         <Field label="ISBN">
           <input style={fs} placeholder="978..." value={form.isbn} onChange={e => f('isbn', e.target.value)} />
         </Field>
 
-        {/* Cover URL */}
         <div style={{ gridColumn: '1/-1' }}>
           <Field label="URL copertina">
             <input style={fs} placeholder="https://..." value={form.cover_url} onChange={e => f('cover_url', e.target.value)} />
@@ -207,6 +244,7 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
         <div style={{ gridColumn: '1/-1', background: color.bgSoft, borderRadius: radius.sm, padding: space[4], display: 'grid', gridTemplateColumns: '1fr 1fr', gap: space[3] }}>
           <div style={{ gridColumn: '1/-1', fontSize: text.xs, color: color.muted, fontFamily: font.body, fontWeight: '600', marginBottom: space[1] }}>👤 Autore/Autrice</div>
 
+          {/* Author name + autocomplete */}
           <div style={{ gridColumn: '1/-1', position: 'relative' }}>
             <Field label="Nome *">
               <div style={{ display: 'flex', gap: space[2] }}>
@@ -240,20 +278,28 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
             )}
           </div>
 
+          {/* Gender */}
           <Field label="Genere autore">
-            <select style={{ ...fs, background: authorLocked ? color.primarySoft : color.surface }} value={form.author_gender} disabled={authorLocked} onChange={e => f('author_gender', e.target.value)}>
+            <select
+              style={{ ...fs, background: authorLocked ? color.primarySoft : color.surface }}
+              value={form.author_gender}
+              disabled={authorLocked}
+              onChange={e => f('author_gender', e.target.value)}
+            >
               {GENDERS.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
           </Field>
 
+          {/* Nationality — dropdown preimpostato */}
           <Field label="Nazionalità">
-            <input
+            <select
               style={{ ...fs, background: authorLocked ? color.primarySoft : color.surface }}
-              placeholder="Es. Italiana"
               value={form.author_nationality}
               disabled={authorLocked}
               onChange={e => f('author_nationality', e.target.value)}
-            />
+            >
+              {NATIONALITIES.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
           </Field>
         </div>
       </div>
