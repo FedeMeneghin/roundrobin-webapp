@@ -58,3 +58,9 @@ export function downloadICS(event) {
   a.href = url; a.download = `${event.title}.ics`; a.click();
   URL.revokeObjectURL(url);
 }
+
+/** Genera un URL Google Maps da una stringa di luogo. */
+export function mapsUrl(location) {
+  if (!location) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+}

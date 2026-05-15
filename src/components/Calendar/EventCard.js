@@ -81,9 +81,19 @@ export default function EventCard({ e, isPast, isCapitano, onEdit, onRemove }) {
       {/* Location */}
       {e.location && (
         <div style={{ display: 'flex', alignItems: 'center', gap: space[2], fontSize: text.sm, color: color.textSoft, fontFamily: font.body }}>
-          📍 {e.location}
+        📍
+          <a
+            href={mapsUrl(e.location)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: color.primary, textDecoration: 'none', fontFamily: font.body }}
+            onMouseEnter={ev => ev.currentTarget.style.textDecoration = 'underline'}
+            onMouseLeave={ev => ev.currentTarget.style.textDecoration = 'none'}
+          >
+            {e.location}
+          </a>
         </div>
-      )}
+)}
 
       {/* Notes */}
       {e.notes && (
