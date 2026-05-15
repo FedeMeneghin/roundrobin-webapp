@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import Login from './components/Login';
 import Navbar from './components/Navbar';
 import Members from './components/Members';
-import Library from './components/Library';
-import Proposals from './components/Proposals';
+import Library from './components/Library/Library';
+import Proposals from './components/Proposals/Proposals';
+import Calendar from './components/Calendar/Calendar';
 import Home from './components/Home';
-import Calendar from './components/Calendar';
+
 import { t } from './theme';
 
 const CAPITANO_PASSWORD = 'kraken123';
