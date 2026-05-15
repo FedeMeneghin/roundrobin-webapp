@@ -5,8 +5,8 @@ import { useBooks } from '../../hooks/useSupabase';
 import BookCard from './BookCard';
 
 const FILTERS = [
-  { id: 'completed', label: '📚 Letti'       },
-  { id: 'active',    label: '📖 In lettura'  },
+  { id: 'completed', label: '📚 Letti'      },
+  { id: 'active',    label: '📖 In lettura' },
 ];
 
 export default function Library({ isCapitano, currentMember }) {
@@ -27,6 +27,17 @@ export default function Library({ isCapitano, currentMember }) {
   async function removeBook(id) {
     if (!window.confirm('Rimuovere questo libro dalla libreria?')) return;
     const { error: err } = await supabase.from('books').delete().eq('id', id);
+    if (err) setError(err.message);
+    else refetch();
+  }
+
+  async function markAsRead(bookId, bookTitle) {
+    const confirmed = window.confirm(`Segnare "${bookTitle}" come letto e spostarlo nell'archivio?`);
+    if (!confirmed) return;
+    const { error: err } = await supabase
+      .from('books')
+      .update({ status: 'completed', selected_date: new Date().toISOString().slice(0, 10) })
+      .eq('id', bookId);
     if (err) setError(err.message);
     else refetch();
   }
@@ -87,6 +98,7 @@ export default function Library({ isCapitano, currentMember }) {
               isCapitano={isCapitano}
               onRate={rateBook}
               onRemove={removeBook}
+              onMarkRead={filter === 'active' ? markAsRead : undefined}
             />
           ))}
         </div>

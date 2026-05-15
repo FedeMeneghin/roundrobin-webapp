@@ -3,11 +3,7 @@ import { color, font, text, space, radius, shadow, btn } from '../../theme';
 import Stars from '../../ui/Stars';
 import Badge from '../../ui/Badge';
 
-/**
- * Single book card for the Library view.
- * Handles display, personal rating, and Capitano actions.
- */
-export default function BookCard({ book, currentMember, isCapitano, onRate, onRemove }) {
+export default function BookCard({ book, currentMember, isCapitano, onRate, onRemove, onMarkRead }) {
   const myRating = currentMember
     ? book.book_ratings?.find(r => r.member_id === currentMember.id)
     : null;
@@ -51,12 +47,12 @@ export default function BookCard({ book, currentMember, isCapitano, onRate, onRe
 
       {/* Badges */}
       <div style={{ display: 'flex', gap: space[2], flexWrap: 'wrap' }}>
-        {book.genre            && <Badge bg={color.primarySoft} fg={color.primaryDark}>{book.genre}</Badge>}
-        {book.authors?.gender  && <Badge bg={color.bgSoft}      fg={color.textSoft}>{book.authors.gender}</Badge>}
-        {book.authors?.nationality && <Badge bg={color.bgSoft}  fg={color.textSoft}>{book.authors.nationality}</Badge>}
+        {book.genre                && <Badge bg={color.primarySoft} fg={color.primaryDark}>{book.genre}</Badge>}
+        {book.authors?.gender      && <Badge bg={color.bgSoft}      fg={color.textSoft}>{book.authors.gender}</Badge>}
+        {book.authors?.nationality && <Badge bg={color.bgSoft}      fg={color.textSoft}>{book.authors.nationality}</Badge>}
       </div>
 
-      {book.publisher    && <div style={{ fontSize: text.xs, color: color.muted, fontFamily: font.body }}>🏠 {book.publisher}</div>}
+      {book.publisher     && <div style={{ fontSize: text.xs, color: color.muted, fontFamily: font.body }}>🏠 {book.publisher}</div>}
       {book.selected_date && <div style={{ fontSize: text.xs, color: color.muted, fontFamily: font.body }}>📅 {new Date(book.selected_date).toLocaleDateString('it-IT')}</div>}
 
       {/* Club average */}
@@ -89,10 +85,25 @@ export default function BookCard({ book, currentMember, isCapitano, onRate, onRe
         </div>
       )}
 
+      {/* Azioni Capitano */}
       {isCapitano && (
-        <button onClick={() => onRemove(book.id)} style={{ ...btn.danger, alignSelf: 'flex-end', marginTop: space[1] }}>
-          Rimuovi
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: space[2], marginTop: space[1] }}>
+          {/* Bottone "Segna come letto" — solo per i libri in lettura */}
+          {onMarkRead && (
+            <button
+              onClick={() => onMarkRead(book.id, book.title)}
+              style={{ ...btn.primary, fontSize: text.xs }}
+            >
+              ✅ Segna come letto
+            </button>
+          )}
+          <button
+            onClick={() => onRemove(book.id)}
+            style={{ ...btn.danger, alignSelf: 'flex-end' }}
+          >
+            Rimuovi
+          </button>
+        </div>
       )}
     </div>
   );

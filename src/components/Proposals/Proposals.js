@@ -8,7 +8,6 @@ import ProposalCard from './ProposalCard';
 export default function Proposals({ isCapitano, currentMember, source }) {
   const isLibrary = source === 'library';
   const { data: proposals, loading, error: fetchError, refetch } = useProposals(source);
-  const [error]   = useState(null);
   const [showAdd, setShowAdd] = useState(false);
 
   async function removeProposal(proposalId, bookId) {
@@ -26,15 +25,45 @@ export default function Proposals({ isCapitano, currentMember, source }) {
   }
 
   async function setBookOfMonth(proposalId, bookId, bookTitle) {
-    if (!window.confirm(`Impostare "${bookTitle}" come libro del mese?`)) return;
-    await supabase.from('books').update({ status: 'backlog', selected_date: null }).eq('status', 'active');
-    await supabase.from('books').update({ status: 'active', selected_date: new Date().toISOString().slice(0, 10) }).eq('id', bookId);
+    // Cerca se esiste già un libro del mese
+    const { data: activeBooks } = await supabase
+      .from('books')
+      .select('id, title')
+      .eq('status', 'active')
+      .limit(1);
+
+    const current = activeBooks?.[0];
+
+    if (current) {
+      // Dialog di conferma: segna quello attivo come letto + promuovi il nuovo
+      const confirmed = window.confirm(
+        `📖 Libro del mese attuale: "${current.title}"\n\n` +
+        `Vuoi segnarlo come LETTO e promuovere "${bookTitle}" come nuovo libro del mese?`
+      );
+      if (!confirmed) return;
+
+      // Segna l'attuale come completato
+      await supabase
+        .from('books')
+        .update({ status: 'completed', selected_date: new Date().toISOString().slice(0, 10) })
+        .eq('id', current.id);
+    } else {
+      // Nessun libro attivo: conferma semplice
+      const confirmed = window.confirm(`Impostare "${bookTitle}" come libro del mese?`);
+      if (!confirmed) return;
+    }
+
+    // Promuovi il nuovo
+    await supabase
+      .from('books')
+      .update({ status: 'active', selected_date: new Date().toISOString().slice(0, 10) })
+      .eq('id', bookId);
     await supabase.from('proposals').delete().eq('id', proposalId);
     refetch();
   }
 
   const canAdd       = isLibrary ? isCapitano : !!currentMember;
-  const displayError = error || fetchError;
+  const displayError = fetchError;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: space[5] }}>
