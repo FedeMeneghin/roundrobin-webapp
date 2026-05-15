@@ -35,37 +35,68 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
   const [authorSuggestions, setAuthorSuggestions] = useState([]);
   const [authorLocked,      setAuthorLocked]      = useState(false);
   const [error,             setError]             = useState(null);
-  const searchTimeout = useRef(null);
-  const authorTimeout = useRef(null);
+  const [selectedBook,      setSelectedBook]      = useState(null);
+  const [hasSearched,       setHasSearched]       = useState(false);
+  const searchTimeout                             = useRef(null);
+  const authorTimeout                             = useRef(null);
 
   const f = useCallback((k, v) => setForm(prev => ({ ...prev, [k]: v })), []);
   const fs = { ...inputStyle, fontSize: text.sm, padding: `${space[2]} ${space[3]}` };
 
-  function handleSearchChange(val) {
-    setSearchQuery(val);
-    clearTimeout(searchTimeout.current);
-    if (val.length < 3) { setSearchResults([]); return; }
-    searchTimeout.current = setTimeout(async () => {
-      setSearching(true);
-      const results = await searchBooks(val);
-      setSearchResults(results);
-      setSearching(false);
-    }, 500);
+async function handleBookSearch(query) {
+  const value = query.trim();
+  setSearchQuery(query);
+  setSearching(true);
+
+  if (!value) {
+    setSearchResults([]);
+    setSelectedBook(null);
+    setHasSearched(false);
+    setSearching(false);
+    return;
   }
 
-  function selectFromSearch(r) {
-    setForm(prev => ({
-      ...prev,
-      title:            r.title,
-      publisher:        r.publisher || '',
-      publication_year: r.year      || '',
-      isbn:             r.isbn      || '',
-      cover_url:        r.cover_url || '',
-      author_name:      r.author    || '',
-    }));
-    setSearchQuery(r.title);
-    setSearchResults([]);
+  try {
+    const results = await searchBooks(value);
+    setSearchResults(results);
+    setSelectedBook(null);
+    setHasSearched(true);
+  } finally {
+    setSearching(false);
   }
+}
+
+function optionalMissingStyle(value) {
+  const isMissing =
+    value === null ||
+    value === undefined ||
+    value === '' ||
+    value === 'Sconosciuta' ||
+    value === 'Sconosciuto';
+
+  return isMissing
+    ? {
+        borderColor: '#e6a23c',
+        background: '#fff8e8',
+      }
+    : {};
+}
+function handleSelectBook(result) {
+  setForm(prev => ({
+    ...prev,
+    title: result.title || prev.title,
+    author_name: result.author || prev.author_name,
+    publication_year: result.publication_year || prev.publication_year,
+    publisher: result.publisher || prev.publisher,
+    isbn: result.isbn || prev.isbn,
+    cover_url: result.cover_url || prev.cover_url,
+  }));
+
+  setSearchResults([]);
+  setSearchQuery(result.title || '');
+  setSelectedBook(result);
+  setHasSearched(false);
+}
 
   function handleAuthorChange(val) {
     f('author_name', val);
@@ -156,7 +187,7 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
       style={fs}
       placeholder="Es. 'Il nome della rosa' oppure ISBN"
       value={searchQuery}
-      onChange={e => handleSearchChange(e.target.value)}
+      onChange={e => handleBookSearch(e.target.value)}
       autoComplete="off"
     />
     {searching && (
@@ -167,7 +198,7 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
         {searchResults.map((r, i) => (
           <div
             key={i}
-            onMouseDown={e => { e.preventDefault(); selectFromSearch(r); }}
+            onMouseDown={e => { e.preventDefault(); handleSelectBook(r); }}
             style={{ padding: `${space[3]} ${space[4]}`, display: 'flex', gap: space[3], alignItems: 'center', cursor: 'pointer', borderBottom: `1px solid ${color.border}` }}
             onMouseEnter={e => e.currentTarget.style.background = color.bgSoft}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -175,7 +206,9 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
             {r.cover_url && <img src={r.cover_url} alt="" style={{ width: '32px', height: '44px', objectFit: 'cover', borderRadius: radius.xs }} loading="lazy" />}
             <div>
               <div style={{ fontWeight: '600', fontSize: text.sm, color: color.text, fontFamily: font.body }}>{r.title}</div>
-              <div style={{ fontSize: text.xs, color: color.muted, fontFamily: font.body }}>{r.author}{r.year ? ` · ${r.year}` : ''}</div>
+              <div style={{ fontSize: text.xs, color: color.muted, fontFamily: font.body }}>
+                {r.author}{r.publication_year ? ` · ${r.publication_year}` : ''}{r.publisher ? ` · ${r.publisher}` : ''}
+              </div>
             </div>
           </div>
         ))}
@@ -185,12 +218,17 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
 </Field>
 
 {/* Messaggio "non trovato" */}
-{!searching && searchQuery.length >= 3 && searchResults.length === 0 && (
+{hasSearched && !searching && searchQuery.trim().length >= 3 && searchResults.length === 0 && !selectedBook && (
   <div style={{
-    fontSize: text.xs, color: color.muted, fontFamily: font.body,
-    background: color.bgSoft, borderRadius: radius.sm,
+    fontSize: text.xs,
+    color: color.muted,
+    fontFamily: font.body,
+    background: color.bgSoft,
+    borderRadius: radius.sm,
     padding: `${space[3]} ${space[4]}`,
-    display: 'flex', flexDirection: 'column', gap: space[2],
+    display: 'flex',
+    flexDirection: 'column',
+    gap: space[2],
   }}>
     <span>📭 Nessun risultato trovato per <em>"{searchQuery}"</em>.</span>
     <span>
@@ -223,11 +261,22 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
         </Field>
 
         <Field label="Anno">
-          <input style={fs} type="number" placeholder="Es. 1980" value={form.publication_year} onChange={e => f('publication_year', e.target.value)} />
+          <input
+          style={{ ...fs, ...optionalMissingStyle(form.publication_year) }}
+          type="number"
+          placeholder="Es. 1980"
+          value={form.publication_year}
+          onChange={e => f('publication_year', e.target.value)}
+          />
         </Field>
 
         <Field label="Editore">
-          <input style={fs} placeholder="Es. Einaudi" value={form.publisher} onChange={e => f('publisher', e.target.value)} />
+          <input
+          style={{ ...fs, ...optionalMissingStyle(form.publisher) }}
+          placeholder="Es. Einaudi"
+          value={form.publisher}
+          onChange={e => f('publisher', e.target.value)}
+          />
         </Field>
 
         <Field label="ISBN">
@@ -281,11 +330,15 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
           {/* Gender */}
           <Field label="Genere autore">
             <select
-              style={{ ...fs, background: authorLocked ? color.primarySoft : color.surface }}
+              style={{
+                ...fs,
+                ...(authorLocked ? { background: color.primarySoft } : {}),
+                ...optionalMissingStyle(form.author_gender),
+              }}
               value={form.author_gender}
               disabled={authorLocked}
               onChange={e => f('author_gender', e.target.value)}
-            >
+              >
               {GENDERS.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
           </Field>
@@ -293,10 +346,14 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
           {/* Nationality — dropdown preimpostato */}
           <Field label="Nazionalità">
             <select
-              style={{ ...fs, background: authorLocked ? color.primarySoft : color.surface }}
-              value={form.author_nationality}
-              disabled={authorLocked}
-              onChange={e => f('author_nationality', e.target.value)}
+              style={{
+              ...fs,
+              ...(authorLocked ? { background: color.primarySoft } : {}),
+              ...optionalMissingStyle(form.author_nationality),
+            }}
+            value={form.author_nationality}
+            disabled={authorLocked}
+            onChange={e => f('author_nationality', e.target.value)}
             >
               {NATIONALITIES.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
@@ -304,6 +361,11 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
         </div>
       </div>
 
+      <div style={{ fontSize: text.xs, color: '#9a6b00', marginTop: space[2] }}>
+            I campi evidenziati non sono obbligatori, ma aiutano a migliorare l'archivio.
+      </div>
+
+      
       <div style={{ display: 'flex', gap: space[3], justifyContent: 'flex-end', borderTop: `1px solid ${color.border}`, paddingTop: space[4], marginTop: space[4] }}>
         <button onClick={onCancel} style={btn.ghost}>Annulla</button>
         <button onClick={handleSubmit} style={btn.primary} disabled={!form.title || !form.author_name}>

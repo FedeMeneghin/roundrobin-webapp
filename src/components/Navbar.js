@@ -7,7 +7,7 @@ const tabs = [
   { id: 'library',  label: 'Libreria',      icon: '📚' },
   { id: 'libsugg',  label: 'Prop. libreria',icon: '🏛️' },
   { id: 'usersugg', label: 'Prop. partecipanti',  icon: '💬' },
-  { id: 'voting',   label: 'Votazione',     icon: '🗳️' },
+  //{ id: 'voting',   label: 'Votazione',     icon: '🗳️' },
   { id: 'members',  label: 'Partecipanti',        icon: '👥' },
 ];
 

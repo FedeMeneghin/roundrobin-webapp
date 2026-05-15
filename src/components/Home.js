@@ -130,24 +130,45 @@ export default function Home({ currentMember, isCapitano }) {
               <Skeleton h="2rem" w="70%" /><Skeleton h="1rem" w="40%" /><Skeleton h="1.5rem" w="30%" />
             </div>
           ) : currentBook ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: space[3] }}>
-              <div style={{ ...heading.xl, fontSize: 'clamp(1.4rem, 4vw, 1.9rem)', lineHeight: 1.2 }}>
-                {currentBook.title}
-              </div>
-              <div style={{ fontFamily: font.body, fontSize: text.md, color: color.textSoft }}>
-                {currentBook.authors?.name}
-              </div>
-              <div style={{ display: 'flex', gap: space[2], flexWrap: 'wrap' }}>
-                {currentBook.genre && <span style={badge(color.primarySoft, color.primaryDark)}>{currentBook.genre}</span>}
-                {currentBook.authors?.nationality && <span style={badge(color.bgSoft, color.textSoft)}>{currentBook.authors.nationality}</span>}
-                {currentBook.publication_year && <span style={badge(color.bgSoft, color.textSoft)}>{currentBook.publication_year}</span>}
-              </div>
-              {currentBook.selected_date && (
-                <div style={{ fontSize: text.sm, color: color.muted, fontFamily: font.body }}>
-                  In lettura dal {new Date(currentBook.selected_date).toLocaleDateString('it-IT')}
-                </div>
-              )}
-            </div>
+  <div style={{ display: 'flex', gap: space[5], alignItems: 'flex-start' }}>
+
+    {/* Copertina */}
+    {currentBook.cover_url && (
+      <img
+        src={currentBook.cover_url}
+        alt={`Copertina di ${currentBook.title}`}
+        style={{
+          width: '90px',
+          flexShrink: 0,
+          borderRadius: radius.sm,
+          boxShadow: shadow.sm,
+          objectFit: 'cover',
+          aspectRatio: '2/3',
+        }}
+      />
+    )}
+
+    {/* Testo */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: space[3], flex: 1 }}>
+      <div style={{ ...heading.xl, fontSize: 'clamp(1.4rem, 4vw, 1.9rem)', lineHeight: 1.2 }}>
+        {currentBook.title}
+      </div>
+      <div style={{ fontFamily: font.body, fontSize: text.md, color: color.textSoft }}>
+        {currentBook.authors?.name}
+      </div>
+      <div style={{ display: 'flex', gap: space[2], flexWrap: 'wrap' }}>
+        {currentBook.genre && <span style={badge(color.primarySoft, color.primaryDark)}>{currentBook.genre}</span>}
+        {currentBook.authors?.nationality && <span style={badge(color.bgSoft, color.textSoft)}>{currentBook.authors.nationality}</span>}
+        {currentBook.publication_year && <span style={badge(color.bgSoft, color.textSoft)}>{currentBook.publication_year}</span>}
+      </div>
+      {currentBook.selected_date && (
+        <div style={{ fontSize: text.sm, color: color.muted, fontFamily: font.body }}>
+          In lettura dal {new Date(currentBook.selected_date).toLocaleDateString('it-IT')}
+        </div>
+      )}
+    </div>
+
+  </div>
           ) : (
             <div style={{ color: color.muted, fontStyle: 'italic', fontFamily: font.body, fontSize: text.md }}>
               Nessun libro attivo al momento.

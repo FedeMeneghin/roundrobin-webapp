@@ -10,7 +10,7 @@ const FILTERS = [
 ];
 
 export default function Library({ isCapitano, currentMember }) {
-  const [filter, setFilter] = useState('completed');
+  const [filter, setFilter] = useState('active');
   const { data: books, loading, error: fetchError, refetch } = useBooks(filter);
   const [error, setError] = useState(null);
 
