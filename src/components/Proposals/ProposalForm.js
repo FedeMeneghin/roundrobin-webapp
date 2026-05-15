@@ -37,7 +37,6 @@ export default function ProposalForm({ isCapitano, currentMember, isLibrary, sou
   const [error,             setError]             = useState(null);
   const [selectedBook,      setSelectedBook]      = useState(null);
   const [hasSearched,       setHasSearched]       = useState(false);
-  const searchTimeout                             = useRef(null);
   const authorTimeout                             = useRef(null);
 
   const f = useCallback((k, v) => setForm(prev => ({ ...prev, [k]: v })), []);
