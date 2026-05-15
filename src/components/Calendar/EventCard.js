@@ -1,6 +1,6 @@
 import React from 'react';
 import { color, font, text, space, radius, shadow, btn, badge } from '../../theme';
-import { formatDate, downloadICS } from '../../utils/formatters';
+import { formatDate, downloadICS, mapsUrl } from '../../utils/formatters';
 
 const TYPE = {
   ufficiale: {
